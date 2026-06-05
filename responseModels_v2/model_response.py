@@ -1,10 +1,10 @@
-from models_BasicMarc21MD import BasicMarc21MD
-from models_AdditionalRecsSRU import AdditionalRecsSRU
-from models_LobidGND import DataLobidGND
-from models_Wikidata import DataWikidata
+from .models_BasicMarc21MD import BasicMarc21MD
+from .models_AdditionalRecsSRU import AdditionalRecsSRU
+from .models_LobidGND import DataLobidGND
+from .models_Wikidata import DataWikidata
 
-from models_otherAPIs import BookCoverOpenLibrary
-from models_otherAPIs import DescriptionGoogleBooks
+from .models_otherAPIs import BookCoverOpenLibrary
+from .models_otherAPIs import DescriptionGoogleBooks
 
 from typing import Literal
 from pydantic import BaseModel, Field

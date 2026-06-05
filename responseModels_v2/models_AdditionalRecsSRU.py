@@ -1,7 +1,7 @@
 from typing import Literal, Union, Annotated
 from pydantic import BaseModel, Field, Discriminator
 
-import models_BasicMarc21MD
+from .models_BasicMarc21MD import Marc21MdClassificationNumber
 
 class AdditionalRec(BaseModel):
 
@@ -31,7 +31,7 @@ class AdditionalRecsBySubjectHeadings(BaseModel):
 class AdditionalRecsByClassification(BaseModel):
 
     searchType: Literal["classification"] = "classification"
-    classifications: list[models_BasicMarc21MD.Marc21MdClassificationNumber] = Field(description="Classifications to search via SRU")
+    classifications: list[Marc21MdClassificationNumber] = Field(description="Classifications to search via SRU")
     maxRecs: int | None = Field(default=None, description="Maximum number of additional records")
     additionalRecs: list[AdditionalRec] = Field(default=[], description="Additional records")
 
