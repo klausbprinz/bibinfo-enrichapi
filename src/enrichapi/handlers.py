@@ -1,9 +1,9 @@
-from dataModels import OeNB
-from responseModels import OeNBResponse
+from .dataModels import OeNB
+from .responseModels import OeNBResponse
 
-from getBaseMD import getBaseMetadataOeNB
+from .getBaseMD import getBaseMetadataOeNB
 
-from util import getSecondaryDataLobid
+from .util import getSecondaryDataLobid
 
 async def baseFetchOeNB(data: OeNB) -> OeNBResponse:
 

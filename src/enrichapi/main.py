@@ -1,8 +1,8 @@
 # run with "fastapi dev main.py"
 
-from handlers import baseFetchOeNB
-from dataModels import OeNB, EnrichmentRequest
-from responseModels import EnrichmentResponse, LibraryResponse
+from .handlers import baseFetchOeNB
+from .dataModels import OeNB, EnrichmentRequest
+from .responseModels import EnrichmentResponse, LibraryResponse
 
 from fastapi import FastAPI, HTTPException
 

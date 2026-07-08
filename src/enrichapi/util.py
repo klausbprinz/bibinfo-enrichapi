@@ -1,6 +1,6 @@
 import httpx
 
-from responseModels import OeNBResponse
+from .responseModels import OeNBResponse
 
 async def getSecondaryDataLobid(resData: OeNBResponse) -> OeNBResponse:
 

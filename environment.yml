@@ -1,0 +1,10 @@
+name: enrichapi
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - fastapi
+  - lxml
+  - pydantic
+prefix: C:\Users\onb1340\.conda\envs\enrichapi

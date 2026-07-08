@@ -1,4 +1,4 @@
-from responseModels import BasicBibMetadata
+from .responseModels import BasicBibMetadata
 from lxml import etree
 from httpx import AsyncClient
 
