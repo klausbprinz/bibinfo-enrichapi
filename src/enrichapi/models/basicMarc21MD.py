@@ -3,23 +3,23 @@ from pydantic import BaseModel, Field
 
 class Marc21MdTitle(BaseModel):
 
-    titleMain: str = Field(description="Title (245a NR)")
+    titleMain: str | None = Field(description="Title (245a NR)")
     titleRemainder: str | None = Field(default=None, description="Remainder of title (245b NR)")
-    titlePartNumber: list[str] = Field(default=[], description="Number of part/section of a work (245n R)")
-    titlePartName: list[str] = Field(default=[], description="Name of part/section of a work (245p R)")
+    titlePartNumber: list[str] = Field(default_factory=list, description="Number of part/section of a work (245n R)")
+    titlePartName: list[str] = Field(default_factory=list, description="Name of part/section of a work (245p R)")
 
 class Marc21MdMainEntry(BaseModel):
 
     name: str | None = Field(default=None, description="Name (100/110/111a NR)")
     nameType: Literal["personal", "corporate", "meeting"] | None = Field(default=None, description="Type of name in main entry")
-    relator: list[str] = Field(default=[], description="Codes for relationship between a name and a work (100/110/1114 R)")
+    relator: list[str] = Field(default_factory=list, description="Codes for relationship between a name and a work (100/110/1114 R)")
     gndIdentifier: str | None = Field(default=None, description="GND-ID (100/110/1110 NR)")
 
 class Marc21MdAddedEntry(BaseModel):
 
     name: str | None = Field(default=None, description="Name (700/710/711a NR)")
     nameType: Literal["personal", "corporate", "meeting"] | None = Field(default=None, description="Type of name in added entry")
-    relator: list[str] = Field(default=[], description="Codes for relationship between a name and a work (700/710/7114 R)")
+    relator: list[str] = Field(default_factory=list, description="Codes for relationship between a name and a work (700/710/7114 R)")
     gndIdentifier: str | None = Field(default=None, description="GND-ID (700/710/7110 NR)")
 
 class Marc21MdPhysDescription(BaseModel):
@@ -32,9 +32,9 @@ class Marc21MdPublicationNotice(BaseModel):
 
     pnType: Literal["current", "other"] = Field(default="other", description="Indicators 31 mark current, rest is others (simplification)")
     dating: str | None = Field(default=None, description="OBV specific, marks specific publication history, only periodicals (2643 NR)")
-    places: list[str] = Field(default=[], description="Places of publication (264a R)")
-    names: list[str] = Field(default=[], description="Names of publishers (264b R)")
-    dates: list[str] = Field(default=[], description="Dates of publication (264c R)")
+    places: list[str] = Field(default_factory=list, description="Places of publication (264a R)")
+    names: list[str] = Field(default_factory=list, description="Names of publishers (264b R)")
+    dates: list[str] = Field(default_factory=list, description="Dates of publication (264c R)")
 
 class Marc21MdClassificationNumber(BaseModel):
 
@@ -44,9 +44,9 @@ class Marc21MdClassificationNumber(BaseModel):
 class Marc21MdIdentifier(BaseModel):
     
     identifier: str | None = Field(default=None, description="Identifier")
-    marcOriginField: Literal["035", "020", "022", "024"] = Field(description="Marc21 origin field")
+    marcOriginField: Literal["035", "020", "022", "024"] | None = Field(default=None, description="Marc21 origin field")
     prefix: str | None = Field(default=None, description="Prefix of Identifier, e.g. '(AT-OBV)' in 035a")
-    additionalInfos: list[str] = Field(default=[], description="Explanatory information, e.g. ISBN (024q R)")
+    additionalInfos: list[str] = Field(default_factory=list, description="Explanatory information, e.g. ISBN (024q R)")
 
 class Marc21MdItemInfos(BaseModel):
 
@@ -65,24 +65,24 @@ class Marc21MdHoldingInfos(BaseModel):
 
 class BasicMarc21MD(BaseModel):
 
-    title: Marc21MdTitle = Field(description="Title information (245abnp NR)")
-    mainEntry: Marc21MdMainEntry = Field(description="Main entry information (100/110/111a40 NR)")
-    addedEntries: list[Marc21MdAddedEntry] = Field(default=[], description="List of added entry information (700/710/711a40 R)")
-    languageCodes: list[str] = Field(default=[], description="Language codes of text/sound track or separate title (041a R)")
-    languageCodesOriginal: list[str] = Field(default=[], description="Language codes of original (041h R)")
-    publicationCountryCodes: list[str] = Field(default=[], description="Country of Publishing/Producing Entity Code ISO (044c R)")
+    title: Marc21MdTitle = Field(default=None, description="Title information (245abnp NR)")
+    mainEntry: Marc21MdMainEntry | None = Field(default=None, description="Main entry information (100/110/111a40 NR)")
+    addedEntries: list[Marc21MdAddedEntry] = Field(default_factory=list, description="List of added entry information (700/710/711a40 R)")
+    languageCodes: list[str] = Field(default_factory=list, description="Language codes of text/sound track or separate title (041a R)")
+    languageCodesOriginal: list[str] = Field(default_factory=list, description="Language codes of original (041h R)")
+    publicationCountryCodes: list[str] = Field(default_factory=list, description="Country of Publishing/Producing Entity Code ISO (044c R)")
     edition: str | None = Field(default=None, description="Edition Statement (250a NR)")
-    physicalDescriptions: list[Marc21MdPhysDescription] = Field(default=[], description="Physical Description (300 R)")
-    publicationNotices : list[Marc21MdPublicationNotice] = Field(default=[], description="Publication Notice (264 R)")
-    genreForms: list[str] = Field(default=[], description="Index Term-Genre/Form ( 655#7a R)")
-    subjectHeadings: list[str] = Field(default=[], description="Subject Headings from 650a, 653a, 689a (second indicator != #)")
-    classifications: list[Marc21MdClassificationNumber] = Field(default=[], description="Classification Number: DDC or other (082/084)")
+    physicalDescriptions: list[Marc21MdPhysDescription] = Field(default_factory=list, description="Physical Description (300 R)")
+    publicationNotices: list[Marc21MdPublicationNotice] = Field(default_factory=list, description="Publication Notice (264 R)")
+    genreForms: list[str] = Field(default_factory=list, description="Index Term-Genre/Form ( 655#7a R)")
+    subjectHeadings: list[str] = Field(default_factory=list, description="Subject Headings from 650a, 689a (second indicator != #)")
+    classifications: list[Marc21MdClassificationNumber] = Field(default_factory=list, description="Classification Number: DDC or other (082/084)")
     bibMaterialType: str = Field(default="other", description="Mapping from leader")
     bibResourceType: str = Field(default="other", description="Mapping from leader and 008")
-    fullTextURLs: list[str] = Field(default=[], description="Full text URLs (856u if 8563 == 'Volltext')")
-    abstracts: list[str] = Field(default=[], description="Summary, etc. 520a")
-    tableOfContentURLs: list[str] = Field(default=[], description="Table of content URLs (856u if 8563 == 'Inhaltsverzeichnis')")
-    identifier: list[Marc21MdIdentifier] = Field(default=[], description="Identifier and additional infos (035a, 020a, 022a, 024a)")
-    holdingInfos: list[Marc21MdHoldingInfos] = Field(default=[], description="Holding Information: Lib, Loc, CN (AVA R)")
+    fullTextURLs: list[str] = Field(default_factory=list, description="Full text URLs (856u if 8563 == 'Volltext')")
+    abstracts: list[str] = Field(default_factory=list, description="Summary, etc. 520a")
+    tableOfContentURLs: list[str] = Field(default_factory=list, description="Table of content URLs (856u if 8563 == 'Inhaltsverzeichnis')")
+    identifier: list[Marc21MdIdentifier] = Field(default_factory=list, description="Identifier and additional infos (035a, 020a, 022a, 024a)")
+    holdingInfos: list[Marc21MdHoldingInfos] = Field(default_factory=list, description="Holding Information: Lib, Loc, CN (AVA R)")
 
 # example: https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB?version=1.2&query=alma.barcode=Z168276302&operation=searchRetrieve
