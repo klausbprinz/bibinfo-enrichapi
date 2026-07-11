@@ -1,7 +1,7 @@
 from typing import Literal, Union, Annotated
 from pydantic import BaseModel, Field, Discriminator
 
-from .models_BasicMarc21MD import Marc21MdClassificationNumber
+from .basicMarc21MD import Marc21MdClassificationNumber
 
 class AdditionalRec(BaseModel):
 
