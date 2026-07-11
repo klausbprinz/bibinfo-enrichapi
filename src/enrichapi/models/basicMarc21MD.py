@@ -48,6 +48,11 @@ class Marc21MdIdentifier(BaseModel):
     prefix: str | None = Field(default=None, description="Prefix of Identifier, e.g. '(AT-OBV)' in 035a")
     additionalInfos: list[str] = Field(default=[], description="Explanatory information, e.g. ISBN (024q R)")
 
+class Marc21MdItemInfos(BaseModel):
+
+    numOfItems: int | None = Field(default=None, description="Number of Items (AVAf NR)")
+    availability: str | None = Field(default=None, description="Library Label (AVAe NR)")
+
 class Marc21MdHoldingInfos(BaseModel):
 
     libraryCode: str | None = Field(default=None, description="Library Code (AVAb NR)")
@@ -55,6 +60,7 @@ class Marc21MdHoldingInfos(BaseModel):
     locationCode: str | None = Field(default=None, description="Location Code (AVAj NR)")
     locationLabel: str | None = Field(default=None, description="Location Label (AVAq NR)")
     callNumber: str | None = Field(default=None, description="Call Number (AVAd NR)")
+    itemInfos: Marc21MdItemInfos | None = Field(default=None, description="Number of items and availability")
     
 
 class BasicMarc21MD(BaseModel):
