@@ -15,7 +15,7 @@ from .otherAPIs import BookCoverOpenLibrary, DescriptionGoogleBooks
 class BaseInstitutionResponse(BaseModel):
     """Common fields shared by any bibliographic source."""
 
-    identifier: str = Field(description="Mandatory system identifier (e.g., Barcode or AC number)")
+    identifier: str = Field(description="Mandatory system identifier (e.g., Barcode or Bib Identifier)")
     basicMarc21MD: BasicMarc21MD | None = Field(default=None, description="Basic Marc21 metadata")
     additionalRecsSRU: AdditionalRecsSRU | None = Field(default=None, description="Similar Records via SRU")
     gndInfoLobid: DataLobidGND | None = Field(default=None, description="Data fetched via Lobid GND API")

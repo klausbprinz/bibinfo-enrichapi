@@ -1,10 +1,11 @@
 name: enrichapi
 channels:
   - conda-forge
-  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python=3.13
+  - pydantic
   - fastapi
   - lxml
-  - pydantic
-prefix: C:\Users\onb1340\.conda\envs\enrichapi
+prefix: /home/k/miniconda3/envs/enrichapi
