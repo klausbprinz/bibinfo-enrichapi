@@ -8,4 +8,3 @@ dependencies:
   - pydantic
   - fastapi
   - lxml
-prefix: /home/k/miniconda3/envs/enrichapi

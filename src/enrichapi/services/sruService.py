@@ -1,7 +1,17 @@
 from lxml import etree
 from httpx import AsyncClient
 import asyncio
-from ..models.basicMarc21MD import BasicMarc21MD, Marc21MdTitle, Marc21MdMainEntry
+
+from typing import Any
+
+from ..util import marc21parser as parse
+
+from ..models.basicMarc21MD import (
+    BasicMarc21MD, 
+    Marc21MdTitle, 
+    Marc21MdMainEntry,
+    Marc21MdAddedEntry
+)
 from ..models.additionalRecsSRU import (
     AdditionalRecsSRU, 
     AdditionalRecsByAuthor, 
@@ -36,42 +46,54 @@ class SruService:
             return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns)
         return None
 
-    def extractMarc21Metadata(self, marc_record: etree._Element) -> BasicMarc21MD:
+    def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
         """Transforms raw XML selectors into pydantic object."""
-        
-        # --- Extract Title (245) ---
-        df245a = marc_record.find('marc:datafield[@tag="245"]/marc:subfield[@code="a"]', namespaces=self.ns)
-        df245b = marc_record.find('marc:datafield[@tag="245"]/marc:subfield[@code="b"]', namespaces=self.ns)
+
+        # extract title
+        titleData = parse.extractTitleData(marcRecord)
         
         titleModel = Marc21MdTitle(
-            titleMain=df245a.text if df245a is not None else None,
-            titleRemainder=df245b.text if df245b is not None else None
+            titleMain=titleData[0],
+            titleRemainder=titleData[1],
+            titlePartNumber=titleData[2],
+            titlePartName=titleData[3]
         )
 
-        # --- Extract Main Entry (100) ---
-        df100a = marc_record.find('marc:datafield[@tag="100"]/marc:subfield[@code="a"]', namespaces=self.ns)
-        df100_0 = marc_record.find('marc:datafield[@tag="100"]/marc:subfield[@code="0"]', namespaces=self.ns)
+        # extract main entry (100 / 110 / 111)
+        mainEntryModel = None
+        for tag, nameType in [("100", "personal"), ("110", "corporate"), ("111", "meeting")]:
+            field = marcRecord.find(f'marc:datafield[@tag="{tag}"]', namespaces=self.ns)
+            if field is not None:
+                data = parse.extractEntryData(field)
+                if data:
+                    mainEntryModel = Marc21MdMainEntry(nameType=nameType, **data)
+                    break
+
+        # added entries (700 / 710 / 711)
+        addedEntriesModels: list[Marc21MdAddedEntry] = []
+        tagMap = {"700": "personal", "710": "corporate", "711": "meeting"}
         
-        mainEntry = None
-        if df100a is not None:
-            
-            # clean up potential (DE-588) prefixes from raw MARC 0 subfields
-            gndClean = df100_0.text.replace("(DE-588)", "").strip() if df100_0 is not None and df100_0.text else None
-            mainEntry = Marc21MdMainEntry(
-                name=df100a.text,
-                nameType="personal",
-                gndIdentifier=gndClean
-            )
+        df7xxList = marcRecord.findall(
+            'marc:datafield[@tag="700"] | marc:datafield[@tag="710"] | marc:datafield[@tag="711"]',
+            namespaces=self.ns
+        )
+        for field in df7xxList:
+            nameType = tagMap.get(field.attrib.get("tag"))
+            data = parse.extractEntryData(field)
+            if data and nameType:
+                addedEntriesModels.append(Marc21MdAddedEntry(nameType=nameType, **data))
+
 
         return BasicMarc21MD(
             title=titleModel,
-            mainEntry=mainEntry
+            mainEntry=mainEntryModel,
+            addedEntries=addedEntriesModels
             
             # TODO: map addedEntries, languageCodes, etc
         )
     
     
-    async def fetchAdditionalRecords(self, marcData: BasicMarc21MD, data) -> AdditionalRecsSRU:
+    async def fetchAdditionalRecords(self, marcData: BasicMarc21MD, data) -> dict[str, Any]:
         """
         Reuses structured data already parsed by extractMarc21Metadata 
         to coordinate dynamic secondary SRU lookups based on user flags.
@@ -82,7 +104,7 @@ class SruService:
         # reuse parsed Main Entry Author data
         if data.fetchSimilarByAuthor and marcData.mainEntry and marcData.mainEntry.name:
             authorName = marcData.mainEntry.name
-            tasks.append(self._executeSubsidiarySRU(f'alma.creator="{authorName}"'))
+            tasks.append(self._executeSubsidiarySRU(f'alma.creator="{authorName}"', maxRecs=data.maxRecs))
             taskTypes.append(("author", authorName))
 
         # reuse parsed subject headings
@@ -90,7 +112,7 @@ class SruService:
             
             # marcData.subjectHeadings is list[str] of your SH values
             queryStr = " OR ".join([f'alma.subject="{s}"' for s in marcData.subjectHeadings])
-            tasks.append(self._executeSubsidiarySRU(queryStr))
+            tasks.append(self._executeSubsidiarySRU(queryStr, maxRecs=data.maxRecs))
             taskTypes.append(("subject", marcData.subjectHeadings))
 
         # reuse parsed classifications
@@ -101,11 +123,11 @@ class SruService:
             if validClasses:
                 # search using primary classification found
                 classNum = validClasses[0]
-                tasks.append(self._executeSubsidiarySRU(f'alma.other_class_number="{classNum}"'))
+                tasks.append(self._executeSubsidiarySRU(f'alma.other_class_number="{classNum}"', maxRecs=data.maxRecs))
                 taskTypes.append(("classification", classNum))
 
         if not tasks:
-            return AdditionalRecsSRU(records=[])
+            return {"records": []}
 
         # concurrent network execution
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -116,32 +138,37 @@ class SruService:
                 continue
             
             if category == "author":
-                finalRecords.append({
-                    "searchType": "author",
-                    "name": criteria,
-                    "additionalRecs": res
-                })
-
+                finalRecords.append(
+                    AdditionalRecsByAuthor(
+                        searchType="author",
+                        name=criteria,
+                        maxRecs=data.maxRecs,
+                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                    )
+                )
             elif category == "subject":
-                finalRecords.append({
-                    "searchType": "subject",
-                    "subjectHeadings": criteria,
-                    "additionalRecs": res
-                })
-
+                finalRecords.append(
+                    AdditionalRecsBySubjectHeadings(
+                        searchType="subjectHeadings",
+                        subjectHeadings=criteria,
+                        maxRecs=data.maxRecs,
+                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                    )
+                )
             elif category == "classification":
-                
-                # convert list of Marc21MdClassificationNumber models into raw dicts so Pydantic parses them cleanly
-                finalRecords.append({
-                    "searchType": "classification",
-                    "classifications": [c.model_dump() for c in marcData.classifications],
-                    "additionalRecs": res
-                })
+                finalRecords.append(
+                    AdditionalRecsByClassification(
+                        searchType="classification",
+                        classifications=marcData.classifications,
+                        maxRecs=data.maxRecs,
+                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                    )
+                )
 
         return {"records": finalRecords}
     
 
-    async def _executeSubsidiarySRU(self, queryString: str) -> list:
+    async def _executeSubsidiarySRU(self, queryString: str, maxRecs: int = 5) -> list:
         """Helper network worker to parse response records from subsequent queries."""
         
         # this is where nested SRU HTTP fetch will take place
@@ -156,3 +183,4 @@ class SruService:
                 "issns": []
             }
         ]
+    

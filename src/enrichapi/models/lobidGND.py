@@ -120,17 +120,24 @@ class DefaultLobidGND(BaseLobidGND):
     """
     gndType: str = Field(description="Fallback for unmapped or generic GND types")
 
+
 # discriminator function to determine the model dynamically
 def resolveGndType(v: Any) -> str:
-    if isinstance(v, dict):
-        gndType = v.get("gndType")
-        
-        # if it's a known type, route it to specific model
-        if gndType in ("person", "corporate", "conferenceOrEvent"):
-            return gndType
-        
+
+    # handle Pydantic model instance as well as dict
+    if isinstance(v, BaseModel):
+        entityType = getattr(v, "entityType", None)
+    elif isinstance(v, dict):
+        entityType = v.get("entityType")
+    else:
+        entityType = None
+    # if it's a known type, route it to specific model
+    if entityType in ("Person", "CorporateBody", "Event", "Work", "PlaceOrGeographicName", "SubjectHeading"):
+        return entityType
+
     # otherwise, route it to our catch-all fallback model
     return "default"
+
 
 class DataLobidGND(BaseModel):
 

@@ -48,13 +48,18 @@ class DefaultAdditionalRecs(BaseModel):
 
 
 def resolveSearchType(v: Any) -> str:
-    
-    if isinstance(v, dict):
+    # if it's a Pydantic model instance
+    if isinstance(v, BaseModel):
+        sType = getattr(v, "searchType", None)
+    # if it's a raw dict
+    elif isinstance(v, dict):
         sType = v.get("searchType")
-        
-        if sType in ("author", "subjectHeadings", "classification"):
-            return sType
-        
+    else:
+        sType = None
+
+    if sType in ("author", "subjectHeadings", "classification"):
+        return sType
+
     return "default"
 
 

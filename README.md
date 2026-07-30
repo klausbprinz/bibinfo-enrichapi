@@ -18,7 +18,8 @@ ticketId: ""
 ## Quick Start & How to Run
 Explain here when finished with first prototype.
 
-1. **Environment:** `enrichapi` / see `environment.yaml`.
+1. **Environment:** Use `conda env create -f environment.yaml` to create environment.
+1. **Setup:** None so far.
 2. **Inputs:** None.
 3. **Execution:** So far: navigate to ./src/enrichapi and run `fastapi dev main.py`.
 

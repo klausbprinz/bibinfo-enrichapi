@@ -73,13 +73,18 @@ class DefaultWikidata(WikidataBaseInfo):
 
 
 def resolveWikidataType(v: Any) -> str:
-    
-    if isinstance(v, dict):
-        wType = v.get("wikidataType")
-        
-        if wType in ("person", "corporate", "conferenceOrEvent"):
-            return wType
-        
+
+    # handle Pydantic model instance as well as dict
+    if isinstance(v, BaseModel):
+        entityType = getattr(v, "entityType", None) # or whichever field stores the type string
+    elif isinstance(v, dict):
+        entityType = v.get("entityType")
+    else:
+        entityType = None
+
+    if entityType in ("Person", "Work", "Place", "Organization"): # adjust list to match your tags
+        return entityType
+
     return "default"
 
 

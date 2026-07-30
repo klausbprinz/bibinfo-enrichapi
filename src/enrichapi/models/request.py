@@ -26,6 +26,9 @@ class OeNBRequestData(BaseModel):
     fetchSimilarBySubject: bool = Field(default=False, description="Fetch subsidiary records by subject headings")
     fetchSimilarByClassification: bool = Field(default=False, description="Fetch subsidiary records by classification numbers")
 
+    # limit control
+    maxRecs: int = Field(default=5, ge=1, le=50, description="Maximum number of additional records to return per strategy")
+
 LibraryInstitution = Annotated[
     Union[OeNBRequestData], 
     Field(discriminator="iName")
