@@ -38,7 +38,7 @@ class Marc21MdPublicationNotice(BaseModel):
 
 class Marc21MdClassificationNumber(BaseModel):
 
-    classificationType: str = Field(default="other", description="if 082a: DDC, if 084a: value from $$2")
+    classificationType: str = Field(default="other", description="if 082a: 'ddc', if 084a: value from $$2")
     classificationNumber: str | None = Field(default=None, description="082a/084a NR")
 
 class Marc21MdIdentifier(BaseModel):

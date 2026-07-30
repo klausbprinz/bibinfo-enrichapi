@@ -12,7 +12,8 @@ from ..models.basicMarc21MD import (
     Marc21MdMainEntry,
     Marc21MdAddedEntry,
     Marc21MdPhysDescription,
-    Marc21MdPublicationNotice
+    Marc21MdPublicationNotice,
+    Marc21MdClassificationNumber
 )
 from ..models.additionalRecsSRU import (
     AdditionalRecsSRU, 
@@ -97,6 +98,13 @@ class SruService:
             for d in parse.extractPublicationNotices(marcRecord)
         ]
 
+        # extract classifications
+        classificationModels = [
+            Marc21MdClassificationNumber(**d) 
+            for d in parse.extractClassificationNumbers(marcRecord)
+        ]
+
+
         return BasicMarc21MD(
             title=titleModel,
             mainEntry=mainEntryModel,
@@ -106,7 +114,15 @@ class SruService:
             publicationCountryCodes=parse.extractPublicationCountryCodes(marcRecord),
             edition=parse.extractEdition(marcRecord),
             physicalDescriptions=physDescriptModels,
-            publicationNotices=publicationNoticeModels
+            publicationNotices=publicationNoticeModels,
+            genreForms=parse.extractGenreForms(marcRecord),
+            subjectHeadings=parse.extractSubjectHeadings(marcRecord),
+            classifications=classificationModels,
+            bibMaterialType="TODO",
+            bibResourceType="TODO",
+            fullTextURLs=parse.extractFullTextURLs(marcRecord),
+            abstracts=parse.extractAbstracts(marcRecord),
+            tableOfContentURLs=parse.extractTableOfContentURLs(marcRecord)
 
 
             

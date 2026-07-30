@@ -2,23 +2,47 @@ from lxml import etree
 
 nsMap = {"marc": "http://www.loc.gov/MARC21/slim"}
 
-def extractSubfield(record: etree._Element, tag: str | None, code: str, ind1: str = None, ind2: str = None) -> str | None:
+def extractSubfield(
+    record: etree._Element, 
+    tag: str | None, 
+    code: str, 
+    ind1: str | None = None, 
+    ind2: str | None = None    
+) -> str | None:
     """Extracts a single subfield text value cleanly."""
     if not tag:
         return None
         
     query = f'marc:datafield[@tag="{tag}"]'
-    if ind1: query += f'[@ind1="{ind1}"]'
-    if ind2: query += f'[@ind2="{ind2}"]'
+    if ind1 is not None: 
+        query += f'[@ind1="{ind1}"]'
+    if ind2 is not None: 
+        query += f'[@ind2="{ind2}"]'
     query += f'/marc:subfield[@code="{code}"]'
     
     elem = record.find(query, namespaces=nsMap)
     return elem.text.strip() if (elem is not None and elem.text) else None
 
 
-def extractSubfieldsList(record: etree._Element, tag: str, code: str) -> list[str]:
-    """Extracts all matching subfields across repeating datafields (e.g. Subject Headings 650$a)."""
-    elems = record.findall(f'marc:datafield[@tag="{tag}"]/marc:subfield[@code="{code}"]', namespaces=nsMap)
+def extractSubfieldsList(
+    record: etree._Element, 
+    tag: str, 
+    code: str, 
+    ind1: str | None = None, 
+    ind2: str | None = None
+) -> list[str]:
+    """Extracts all matching subfields across repeating datafields, with optional indicator filtering."""
+    if not tag:
+        return []
+        
+    query = f'marc:datafield[@tag="{tag}"]'
+    if ind1 is not None:
+        query += f'[@ind1="{ind1}"]'
+    if ind2 is not None:
+        query += f'[@ind2="{ind2}"]'
+    query += f'/marc:subfield[@code="{code}"]'
+
+    elems = record.findall(query, namespaces=nsMap)
     return [e.text.strip() for e in elems if e.text and e.text.strip()]
 
 
@@ -110,5 +134,92 @@ def extractPublicationNotices(marcRecord: etree._Element) -> list[dict]:
             fieldDataList.append(pubNoteDict)
 
     return fieldDataList
+
+def extractGenreForms(marcRecord: etree._Element) -> list[str]:
+    return extractSubfieldsList(marcRecord, "655", "a", ind1=" ", ind2="7")
+
+def extractSubjectHeadings(marcRecord: etree._Element) -> list[str]:
+    # extract all 650 $a
+    sh650 = extractSubfieldsList(marcRecord, "650", "a")
     
+    # extract 689 $a only where ind2 is not " "
+    sh689Elems = marcRecord.xpath(
+        'marc:datafield[@tag="689" and (@ind2 and @ind2!=" ")]/marc:subfield[@code="a"]',
+        namespaces=nsMap
+    )
+    sh689 = [e.text.strip() for e in sh689Elems if e.text and e.text.strip()]
+    
+    # combine and deduplicate while preserving order
+    return list(dict.fromkeys(sh650 + sh689))
+
+
+def extractClassificationNumbers(marcRecord: etree._Element) -> list[dict]:
+    fieldDataList = []
+
+    for classElem in marcRecord.xpath('marc:datafield[@tag="082" or @tag="084"]', namespaces=nsMap):
+        sfa = classElem.find('marc:subfield[@code="a"]', namespaces=nsMap)
+        classNum = sfa.text.strip() if (sfa is not None and sfa.text) else None
+
+        # proceed only if extracted classification number
+        if not classNum:
+            continue
+
+        tag = classElem.attrib.get("tag", "")
+        if tag == "082":
+            classType = "ddc"
+        else:
+            sf2 = classElem.find('marc:subfield[@code="2"]', namespaces=nsMap)
+            classType = sf2.text.strip() if (sf2 is not None and sf2.text) else "other"
+
+        fieldDataList.append({
+            "classificationType": classType,
+            "classificationNumber": classNum
+        })
+
+    return fieldDataList
+
+def extractFullTextURLs(marcRecord: etree._Element) -> list[str]:
+    ftuList = []
+
+    for df856Elem in marcRecord.findall('marc:datafield[@tag="856"]', namespaces=nsMap):
+        sf3 = df856Elem.find('marc:subfield[@code="3"]', namespaces=nsMap)
+        sfu = df856Elem.find('marc:subfield[@code="u"]', namespaces=nsMap)
+
+        if sfu is None or not sfu.text or not sfu.text.strip():
+            continue
+
+        # clean text values
+        sf3Text = sf3.text.strip() if (sf3 is not None and sf3.text) else ""
+        url = sfu.text.strip()
+
+        # check for 'Volltext' in subfield $3 (case-insensitive & whitespace trimmed)
+        if "volltext" in sf3Text.lower():
+            ftuList.append(url)
+
+    # return deduplicated list while preserving order
+    return list(dict.fromkeys(ftuList))
+
+def extractAbstracts(marcRecord: etree._Element) -> list[str]:
+    return extractSubfieldsList(marcRecord, "520", "a")
+
+def extractTableOfContentURLs(marcRecord: etree._Element) -> list[str]:
+    tocList = []
+
+    for df856Elem in marcRecord.findall('marc:datafield[@tag="856"]', namespaces=nsMap):
+        sf3 = df856Elem.find('marc:subfield[@code="3"]', namespaces=nsMap)
+        sfu = df856Elem.find('marc:subfield[@code="u"]', namespaces=nsMap)
+
+        if sfu is None or not sfu.text or not sfu.text.strip():
+            continue
+
+        # clean text values
+        sf3Text = sf3.text.strip() if (sf3 is not None and sf3.text) else ""
+        url = sfu.text.strip()
+
+        # check for 'Inhaltsverzeichnis' in subfield $3 (case-insensitive & whitespace trimmed)
+        if "inhaltsverzeichnis" in sf3Text.lower():
+            tocList.append(url)
+
+    # return deduplicated list while preserving order
+    return list(dict.fromkeys(tocList))
 
