@@ -43,8 +43,8 @@ class Marc21MdClassificationNumber(BaseModel):
 
 class Marc21MdIdentifier(BaseModel):
     
-    identifier: str | None = Field(default=None, description="Identifier")
-    marcOriginField: Literal["035", "020", "022", "024"] | None = Field(default=None, description="Marc21 origin field")
+    value: str | None = Field(default=None, description="Identifier text value")
+    idType: Literal["isbn", "issn", "other", "systemId"] | None = Field(default=None, description="Type of ID: isbn (020a), issn (022a), other (024a), systemId (035a)")
     prefix: str | None = Field(default=None, description="Prefix of Identifier, e.g. '(AT-OBV)' in 035a")
     additionalInfos: list[str] = Field(default_factory=list, description="Explanatory information, e.g. ISBN (024q R)")
 

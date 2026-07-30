@@ -13,7 +13,10 @@ from ..models.basicMarc21MD import (
     Marc21MdAddedEntry,
     Marc21MdPhysDescription,
     Marc21MdPublicationNotice,
-    Marc21MdClassificationNumber
+    Marc21MdClassificationNumber,
+    Marc21MdIdentifier,
+    Marc21MdItemInfos,
+    Marc21MdHoldingInfos
 )
 from ..models.additionalRecsSRU import (
     AdditionalRecsSRU, 
@@ -104,6 +107,18 @@ class SruService:
             for d in parse.extractClassificationNumbers(marcRecord)
         ]
 
+        # extract identifier
+        identifierModels = [
+            Marc21MdIdentifier(**d) 
+            for d in parse.extractIdentifier(marcRecord)
+        ]
+
+        # extract holdings and items
+        holdingModels = [
+            Marc21MdHoldingInfos(**d)
+            for d in parse.extractHoldingInfos(marcRecord)
+        ]
+
 
         return BasicMarc21MD(
             title=titleModel,
@@ -122,11 +137,9 @@ class SruService:
             bibResourceType="TODO",
             fullTextURLs=parse.extractFullTextURLs(marcRecord),
             abstracts=parse.extractAbstracts(marcRecord),
-            tableOfContentURLs=parse.extractTableOfContentURLs(marcRecord)
-
-
-            
-            # TODO: map addedEntries, languageCodes, etc
+            tableOfContentURLs=parse.extractTableOfContentURLs(marcRecord),
+            identifier=identifierModels,
+            holdingInfos=holdingModels
         )
     
     

@@ -223,3 +223,90 @@ def extractTableOfContentURLs(marcRecord: etree._Element) -> list[str]:
     # return deduplicated list while preserving order
     return list(dict.fromkeys(tocList))
 
+def extractIdentifier(marcRecord: etree._Element) -> list[str]:
+    fieldDataList = []
+
+    for idElem in marcRecord.xpath(
+        'marc:datafield[@tag="020" or @tag="022" or @tag="024" or @tag="035"]',
+        namespaces=nsMap
+    ):
+        sfa = idElem.find('marc:subfield[@code="a"]', namespaces=nsMap)
+        identifier = sfa.text.strip() if (sfa is not None and sfa.text) else None
+
+        # proceed only if extracted id
+        if not identifier:
+            continue
+
+        prefix = None
+        additionalInfos = []
+
+        tag = idElem.attrib.get("tag", "")
+        if tag == "020":
+            idType = "isbn"
+            sfqElems = idElem.findall('marc:subfield[@code="q"]', namespaces=nsMap)
+            additionalInfos = [sfqElem.text for sfqElem in sfqElems]  
+        elif tag == "022":
+            idType = "issn"
+        elif tag == "024":
+            idType = "other"
+            sfq2Elems = idElem.xpath('marc:subfield[@code="q" or @code="2"]', namespaces=nsMap)
+            additionalInfos = [sfq2Elem.text for sfq2Elem in sfq2Elems]  
+        elif tag == "035":
+            idType = "systemId"
+            if ")" in identifier:
+                prefixPart, mainPart = identifier.split(")", 1)
+                prefix = prefixPart + ")"
+                identifier = mainPart.strip()
+
+
+        fieldDataList.append({
+            "value": identifier,
+            "idType": idType,
+            "prefix": prefix,
+            "additionalInfos": additionalInfos
+        })
+
+    return fieldDataList
+
+def extractHoldingInfos(marcRecord: etree._Element) -> list[dict]:
+    holdingsList = []
+
+    # parse AVA fields
+    for dfAVA in marcRecord.findall('marc:datafield[@tag="AVA"]', namespaces=nsMap):
+        
+        # helper to extract text cleanly inline
+        def getAvaSubfieldText(code: str) -> str | None:
+            elem = dfAVA.find(f'marc:subfield[@code="{code}"]', namespaces=nsMap)
+            return elem.text.strip() if (elem is not None and elem.text) else None
+
+        # extract fields
+        libCode = getAvaSubfieldText("b")
+        libLabel = getAvaSubfieldText("q")
+        callNum = getAvaSubfieldText("d")
+        avail = getAvaSubfieldText("e")
+        numItemsStr = getAvaSubfieldText("f")
+        locCode = getAvaSubfieldText("j")
+        locLabel = getAvaSubfieldText("c")
+
+        # safely convert numOfItems to int
+        numItems = int(numItemsStr) if (numItemsStr and numItemsStr.isdigit()) else None
+
+        # build dict mimicking nested Pydantic structure
+        holdingDict = {
+            "libraryCode": libCode,
+            "libraryLabel": libLabel,
+            "locationCode": locCode,
+            "locationLabel": locLabel,
+            "callNumber": callNum,
+            "itemInfos": {
+                "numOfItems": numItems,
+                "availability": avail
+            }
+        }
+
+        # guard: only append if at least some core holding identifier exists
+        if libCode or callNum or locCode:
+            holdingsList.append(holdingDict)
+
+    return holdingsList
+
