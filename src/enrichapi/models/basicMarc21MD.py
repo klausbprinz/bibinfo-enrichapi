@@ -86,3 +86,4 @@ class BasicMarc21MD(BaseModel):
     holdingInfos: list[Marc21MdHoldingInfos] = Field(default_factory=list, description="Holding Information: Lib, Loc, CN (AVA R)")
 
 # example: https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB?version=1.2&query=alma.barcode=Z168276302&operation=searchRetrieve
+# example: https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB?version=1.2&query=alma.local_control_field_009=AC08958802&operation=searchRetrieve

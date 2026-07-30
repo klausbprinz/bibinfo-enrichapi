@@ -10,7 +10,9 @@ from ..models.basicMarc21MD import (
     BasicMarc21MD, 
     Marc21MdTitle, 
     Marc21MdMainEntry,
-    Marc21MdAddedEntry
+    Marc21MdAddedEntry,
+    Marc21MdPhysDescription,
+    Marc21MdPublicationNotice
 )
 from ..models.additionalRecsSRU import (
     AdditionalRecsSRU, 
@@ -69,12 +71,12 @@ class SruService:
                     mainEntryModel = Marc21MdMainEntry(nameType=nameType, **data)
                     break
 
-        # added entries (700 / 710 / 711)
+        # extract added entries (700 / 710 / 711)
         addedEntriesModels: list[Marc21MdAddedEntry] = []
         tagMap = {"700": "personal", "710": "corporate", "711": "meeting"}
         
-        df7xxList = marcRecord.findall(
-            'marc:datafield[@tag="700"] | marc:datafield[@tag="710"] | marc:datafield[@tag="711"]',
+        df7xxList = marcRecord.xpath(
+            'marc:datafield[@tag="700" or @tag="710" or @tag="711"]',
             namespaces=self.ns
         )
         for field in df7xxList:
@@ -83,11 +85,30 @@ class SruService:
             if data and nameType:
                 addedEntriesModels.append(Marc21MdAddedEntry(nameType=nameType, **data))
 
+        # extract physDescriptions
+        physDescriptModels = [
+            Marc21MdPhysDescription(**d) 
+            for d in parse.extractPhysicalDescriptions(marcRecord)
+        ]
+
+        # extract publicationNotices
+        publicationNoticeModels = [
+            Marc21MdPublicationNotice(**d) 
+            for d in parse.extractPublicationNotices(marcRecord)
+        ]
 
         return BasicMarc21MD(
             title=titleModel,
             mainEntry=mainEntryModel,
-            addedEntries=addedEntriesModels
+            addedEntries=addedEntriesModels,
+            languageCodes=parse.extractLanguageCodes(marcRecord),
+            languageCodesOriginal=parse.extractLanguageCodesOriginal(marcRecord),
+            publicationCountryCodes=parse.extractPublicationCountryCodes(marcRecord),
+            edition=parse.extractEdition(marcRecord),
+            physicalDescriptions=physDescriptModels,
+            publicationNotices=publicationNoticeModels
+
+
             
             # TODO: map addedEntries, languageCodes, etc
         )
