@@ -1,7 +1,7 @@
 # with lobid/json -> pydantic can do the heavy lifting
 
 from typing import Literal, Union, Annotated, Any
-from pydantic import BaseModel, Field, Discriminator, Tag
+from pydantic import BaseModel, Field, Discriminator, Tag, ConfigDict
 
 
 class LobidGndSameAs(BaseModel):
@@ -66,26 +66,56 @@ class LobidGndSponsorOrPatron(BaseModel):
 
 class BaseLobidGND(BaseModel):
 
-    entityTypes: list[str] = Field(default_factory=list, description="Information on type of GND record")
+    # enables creating the model using either alias OR Python attribute name
+    model_config = ConfigDict(populate_by_name=True)
+
+    entityTypes: list[str] = Field(
+        default_factory=list,
+        alias="type",  # Lobid JSON key: "types"
+        description="Information on type of GND record"
+    )
+
+
     depictionURLs: list[str] = Field(default_factory=list, description="Depiction URLs")
     geographicAreaCodes: list[LobidGndGeographicAreaCode] = Field(default_factory=list, description="geographicAreaCode elem list")
     sameAs: list[LobidGndSameAs] = Field(default_factory=list, description="idURL and collectionName")
     homepage: list[LobidGndHomepage] = Field(default_factory=list, description="Homepage, Id and Label")
     gndSubjectCategories: list[LobidGndSubjectCategory] = Field(default_factory=list, description="GND Subject Category")
-    preferredName: str | None = Field(default=None, description="Preferred Name")
-    biographicalOrHistoricalInformation: list[str] = Field(default_factory=list, description="Biographical or Historical text nodes")
+
+    preferredName: str | None = Field(
+        default=None,
+        alias="preferredName"  # matches directly, but explicit alias doesn't hurt
+    )
+    biographicalOrHistoricalInformation: list[str] = Field(
+        default_factory=list,
+        alias="biographicalOrHistoricalInformation"  # matches directly
+    )
 
 
 
 class PersonLobidGND(BaseLobidGND):
 
     gndType: Literal["person"] = "person"
+
     professionsOrOccupations: list[str] = Field(default_factory=list, description="professionOrOccupation elem, list, label elem")
-    datesOfBirth: list[str] = Field(default_factory=list, description="dateOfBirth elem, list, text nodes")
-    datesOfDeath: list[str] = Field(default_factory=list, description="dateOfDeath elem, list, text nodes")
+
+    datesOfBirth: list[str] = Field(
+        default_factory=list,
+        alias="dateOfBirth"
+    )
+    datesOfDeath: list[str] = Field(
+        default_factory=list,
+        alias="dateOfDeath"
+    )
+
     placesOfBirth: list[str] = Field(default_factory=list, description="placeOfBirth elem, list, label elems")
     placesOfDeath: list[str] = Field(default_factory=list, description="placeOfDeath elem, list, label elems")
-    publications: list[str] = Field(default_factory=list, description="publication elem, list, text nodes")
+
+    publications: list[str] = Field(
+        default_factory=list,
+        alias="publication"
+    )
+
     affiliations: list[LobidGndAffiliation] = Field(default_factory=list, description="Affiliations")
 
     # examples: https://lobid.org/gnd/118610465.json, https://lobid.org/gnd/1046376195.json, https://lobid.org/gnd/11881544X.json
@@ -94,10 +124,19 @@ class PersonLobidGND(BaseLobidGND):
 class CorporateLobidGND(BaseLobidGND):
 
     gndType: Literal["corporate"] = "corporate"
-    variantNames: list[str] = Field(default_factory=list, description="Variant Names")
+
+    variantNames: list[str] = Field(
+        default_factory=list,
+        alias="variantName"
+    )
+
     placesOfBusiness: list[LobidGndPlaceOfBusiness] = Field(default_factory=list, description="Places of Business")
     spatialAreasOfActivity: list[LobidGndSpatialAreaOfActivity] = Field(default_factory=list, description="Spatial Areas of Activity")
-    datesOfEstablishment: list[str] = Field(default_factory=list, description="dateOfEstablishment, list, text nodes")
+
+    datesOfEstablishment: list[str] = Field(
+        default_factory=list,
+        alias="dateOfEstablishment"
+    )
 
     # examples: https://lobid.org/gnd/2024703-5.json, https://lobid.org/gnd/38633-9.json, https://lobid.org/gnd/5003949-0.json
 
@@ -105,8 +144,16 @@ class CorporateLobidGND(BaseLobidGND):
 class ConferenceOrEventLobidGND(BaseLobidGND):
 
     gndType: Literal["conferenceOrEvent"] = "conferenceOrEvent"
-    variantNames: list[str] = Field(default_factory=list, description="Variant Names")
-    datesOfConferenceOrEvent: list[str] = Field(default_factory=list, description="datesOfConferenceOrEvent elem, list, text nodes")
+
+    variantNames: list[str] = Field(
+        default_factory=list,
+        alias="variantName"
+    )
+    datesOfConferenceOrEvent: list[str] = Field(
+        default_factory=list,
+        alias="dateOfConferenceOrEvent"
+    )
+
     placesOfConferenceOrEvent: list[LobidGndPlaceOfConferenceOrEvent] = Field(default_factory=list, description="Places of Conference or Event")
     relatedConferencesOrEvents: list[LobidGndRelatedConferenceOrEvent] = Field(default_factory=list, description="Related Conferences or Events")
     sponsorsOrPatrons: list[LobidGndSponsorOrPatron] = Field(default_factory=list, description="Sponsors or Patrons")
