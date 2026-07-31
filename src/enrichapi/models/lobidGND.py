@@ -1,67 +1,94 @@
 # with lobid/json -> pydantic can do the heavy lifting
 
 from typing import Literal, Union, Annotated, Any
-from pydantic import BaseModel, Field, Discriminator, Tag, ConfigDict
+from pydantic import BaseModel, Field, Discriminator, Tag, ConfigDict, field_validator, model_validator
 
 
 class LobidGndSameAs(BaseModel):
 
-    idURL: str | None = Field(default=None, description="sameAs elem, list, id node")
-    collectionName: str | None = Field(default=None, description="sameAs elem, list, collection elem, name elem")
+    idURL: str | None = Field(default=None, alias="id")
+    collectionName: str | None = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def flattenCollectionName(cls, raw: Any) -> Any:
+        if isinstance(raw, dict):
+            collectionDict = raw.get("collection")
+            if isinstance(collectionDict, dict):
+                # safe copy or direct update
+                return {**raw, "collectionName": collectionDict.get("name")}
+        return raw
 
 
 class LobidGndGeographicAreaCode(BaseModel):
     
-    code: str | None = Field(default=None, description="geographicAreaCode elem, list, id elem")
-    idURL: str | None = Field(default=None, description="geographicAreaCode elem, list, label elem")
+    code: str | None = Field(default=None, description="Extracted code, e.g. XA-AT")
+    idURL: str | None = Field(default=None, alias="id", description="Full URL string")
+
+    @model_validator(mode="before")
+    @classmethod
+    def extractCodeAndUrl(cls, raw: Any) -> Any:
+        if isinstance(raw, dict):
+            # grab full URL from 'id'
+            fullUrl = raw.get("id")
+            if isinstance(fullUrl, str):
+                # ensure idURL gets populated
+                raw["idURL"] = fullUrl
+                
+                # extract fragment after '#' (e.g. "XA-AT") if present
+                if "#" in fullUrl:
+                    raw["code"] = fullUrl.split("#")[-1]
+                else:
+                    raw["code"] = fullUrl.rstrip("/").split("/")[-1]
+        return raw
 
 
 class LobidGndHomepage(BaseModel):
 
-    homepageId: str | None = Field(default=None, description="homepage elem, list, id elem")
-    homepageLabel: str | None = Field(default=None, description="homepage elem, list, label elem")
+    homepageId: str | None = Field(default=None, alias="id")
+    homepageLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndSubjectCategory(BaseModel):
 
-    subjectCategoryId: str | None = Field(default=None, description="gndSubjectCategory elem, list, id elem")
-    subjectCategoryLabel: str | None = Field(default=None, description="gndSubjectCategory elem, list, label elem")
+    subjectCategoryId: str | None = Field(default=None, alias="id")
+    subjectCategoryLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndAffiliation(BaseModel):
 
-    affiliationId: str | None = Field(default=None, description="affiliation elem, list, id elem")
-    affiliationLabel: str | None = Field(default=None, description="affiliation elem, list, label elem")
+    affiliationId: str | None = Field(default=None, alias="id")
+    affiliationLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndPlaceOfBusiness(BaseModel):
 
-    pobId: str | None = Field(default=None, description="placeOfBusiness elem, list, id elem")
-    pobLabel: str | None = Field(default=None, description="placeOfBusiness elem, list, label elem")
+    pobId: str | None = Field(default=None, alias="id")
+    pobLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndSpatialAreaOfActivity(BaseModel):
 
-    saaId: str | None = Field(default=None, description="spatialAreaOfActivity elem, list, id elem")
-    saaLabel: str | None = Field(default=None, description="spatialAreaOfActivity elem, list, label elem")
+    saaId: str | None = Field(default=None, alias="id")
+    saaLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndPlaceOfConferenceOrEvent(BaseModel):
 
-    poceId: str | None = Field(default=None, description="placeOfConferenceOrEvent elem, list, id elem")
-    poceLabel: str | None = Field(default=None, description="placeOfConferenceOrEvent elem, list, label elem")
+    poceId: str | None = Field(default=None, alias="id")
+    poceLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndRelatedConferenceOrEvent(BaseModel):
 
-    rceId: str | None = Field(default=None, description="relatedConferenceOrEvent elem, list, id elem")
-    rceLabel: str | None = Field(default=None, description="relatedConferenceOrEvent elem, list, label elem")
+    rceId: str | None = Field(default=None, alias="id")
+    rceLabel: str | None = Field(default=None, alias="label")
 
 
 class LobidGndSponsorOrPatron(BaseModel):
 
-    rpId: str | None = Field(default=None, description="sponsorOrPatron elem, list, id elem")
-    rpLabel: str | None = Field(default=None, description="sponsorOrPatron elem, list, label elem")
+    rpId: str | None = Field(default=None, alias="id")
+    rpLabel: str | None = Field(default=None, alias="label")
 
 
 class BaseLobidGND(BaseModel):
@@ -74,14 +101,6 @@ class BaseLobidGND(BaseModel):
         alias="type",  # Lobid JSON key: "types"
         description="Information on type of GND record"
     )
-
-
-    depictionURLs: list[str] = Field(default_factory=list, description="Depiction URLs")
-    geographicAreaCodes: list[LobidGndGeographicAreaCode] = Field(default_factory=list, description="geographicAreaCode elem list")
-    sameAs: list[LobidGndSameAs] = Field(default_factory=list, description="idURL and collectionName")
-    homepage: list[LobidGndHomepage] = Field(default_factory=list, description="Homepage, Id and Label")
-    gndSubjectCategories: list[LobidGndSubjectCategory] = Field(default_factory=list, description="GND Subject Category")
-
     preferredName: str | None = Field(
         default=None,
         alias="preferredName"  # matches directly, but explicit alias doesn't hurt
@@ -91,13 +110,49 @@ class BaseLobidGND(BaseModel):
         alias="biographicalOrHistoricalInformation"  # matches directly
     )
 
+    depictionURLs: list[str] = Field(default_factory=list, alias="depiction")
+    # validate depiction before parsing
+    @field_validator("depictionURLs", mode="before")
+    @classmethod
+    def extractDepictionURLs(cls, rawVal: Any) -> list[str]:
+        if not rawVal:
+            return []
+        if isinstance(rawVal, list):
+            # pull "id" string from each depiction dictionary
+            return [item.get("id") for item in rawVal if isinstance(item, dict) and "id" in item]
+        return []
+
+    geographicAreaCodes: list[LobidGndGeographicAreaCode] = Field(
+        default_factory=list, alias="geographicAreaCode"
+    )
+    sameAs: list[LobidGndSameAs] = Field(default_factory=list, alias="sameAs")
+    homepage: list[LobidGndHomepage] = Field(default_factory=list, alias="homepage")
+    gndSubjectCategories: list[LobidGndSubjectCategory] = Field(
+        default_factory=list, alias="gndSubjectCategory"
+    )
 
 
 class PersonLobidGND(BaseLobidGND):
 
     gndType: Literal["person"] = "person"
 
-    professionsOrOccupations: list[str] = Field(default_factory=list, description="professionOrOccupation elem, list, label elem")
+    # define fields with aliases to Lobid JSON keys (simple for str | list[str])
+    professionsOrOccupations: list[str] = Field(default_factory=list, alias="professionOrOccupation")
+    placesOfBirth: list[str] = Field(default_factory=list, alias="placeOfBirth")
+    placesOfDeath: list[str] = Field(default_factory=list, alias="placeOfDeath")
+
+    # attach one validator to multiple fields
+    # intercepts raw JSON for field before Pydantic checks types
+    # for: extracting strings/labels from dicts, flattening lists
+    @field_validator("professionsOrOccupations", "placesOfBirth", "placesOfDeath", mode="before")
+    @classmethod
+    def extractLabels(cls, rawVal: Any) -> list[str]:
+        if not rawVal:
+            return []
+        if isinstance(rawVal, list):
+            # if item is {"id": "...", "label": "Physicist"}, pull "label"
+            return [item.get("label") if isinstance(item, dict) else str(item) for item in rawVal]
+        return []
 
     datesOfBirth: list[str] = Field(
         default_factory=list,
@@ -107,16 +162,12 @@ class PersonLobidGND(BaseLobidGND):
         default_factory=list,
         alias="dateOfDeath"
     )
-
-    placesOfBirth: list[str] = Field(default_factory=list, description="placeOfBirth elem, list, label elems")
-    placesOfDeath: list[str] = Field(default_factory=list, description="placeOfDeath elem, list, label elems")
-
     publications: list[str] = Field(
         default_factory=list,
         alias="publication"
     )
 
-    affiliations: list[LobidGndAffiliation] = Field(default_factory=list, description="Affiliations")
+    affiliations: list[LobidGndAffiliation] = Field(default_factory=list, alias="affiliation")
 
     # examples: https://lobid.org/gnd/118610465.json, https://lobid.org/gnd/1046376195.json, https://lobid.org/gnd/11881544X.json
 
@@ -130,8 +181,12 @@ class CorporateLobidGND(BaseLobidGND):
         alias="variantName"
     )
 
-    placesOfBusiness: list[LobidGndPlaceOfBusiness] = Field(default_factory=list, description="Places of Business")
-    spatialAreasOfActivity: list[LobidGndSpatialAreaOfActivity] = Field(default_factory=list, description="Spatial Areas of Activity")
+    placesOfBusiness: list[LobidGndPlaceOfBusiness] = Field(
+        default_factory=list, alias="placeOfBusiness"
+    )
+    spatialAreasOfActivity: list[LobidGndSpatialAreaOfActivity] = Field(
+        default_factory=list, alias="spatialAreaOfActivity"   
+    )
 
     datesOfEstablishment: list[str] = Field(
         default_factory=list,
@@ -154,9 +209,15 @@ class ConferenceOrEventLobidGND(BaseLobidGND):
         alias="dateOfConferenceOrEvent"
     )
 
-    placesOfConferenceOrEvent: list[LobidGndPlaceOfConferenceOrEvent] = Field(default_factory=list, description="Places of Conference or Event")
-    relatedConferencesOrEvents: list[LobidGndRelatedConferenceOrEvent] = Field(default_factory=list, description="Related Conferences or Events")
-    sponsorsOrPatrons: list[LobidGndSponsorOrPatron] = Field(default_factory=list, description="Sponsors or Patrons")
+    placesOfConferenceOrEvent: list[LobidGndPlaceOfConferenceOrEvent] = Field(
+        default_factory=list, alias="placeOfConferenceOrEvent"
+    )
+    relatedConferencesOrEvents: list[LobidGndRelatedConferenceOrEvent] = Field(
+        default_factory=list, alias="relatedConferenceOrEvent"
+    )
+    sponsorsOrPatrons: list[LobidGndSponsorOrPatron] = Field(
+        default_factory=list, alias="sponsorOrPatron"
+    )
 
     # examples: https://lobid.org/gnd/6514095-3.json, https://lobid.org/gnd/1216257191.json, https://lobid.org/gnd/2096142-X.json, https://lobid.org/gnd/1058916807.json, https://lobid.org/gnd/5281710-6.json
 
@@ -167,7 +228,7 @@ class DefaultLobidGND(BaseLobidGND):
     This model catches any entity types that are not explicitly structured yet 
     (e.g., Geografikum, Sachbegriff, Werk). It won't crash the API.
     """
-    gndType: str = Field(description="Fallback for unmapped or generic GND types")
+    gndType: str = Field(default="default", description="Fallback for unmapped or generic GND types")
 
 
 # discriminator function to determine the model dynamically
@@ -208,4 +269,3 @@ class DataLobidGND(BaseModel):
         ],
         Discriminator(resolveGndType)
     ] = Field(description="Use lobid API: https://lobid.org/gnd/<gndid>.json with fallback routing")
-
