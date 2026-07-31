@@ -5,9 +5,10 @@ from .basicMarc21MD import Marc21MdClassificationNumber
 
 class AdditionalRec(BaseModel):
 
-    ac: str = Field(description="AC identifier of additional record")
+    ac: str = Field(description="AC/009 identifier of additional record")
+    titleMain: str | None = Field(description="Title (245a NR)")
     callNumbers: list[str] = Field(default_factory=list, description="Call number identifiers of additional record")
-    barcodes: list[str] = Field(default_factory=list, description="Barcode identifiers of additional record")
+    #barcodes: list[str] = Field(default_factory=list, description="Barcode identifiers of additional record")
     isbns: list[str] = Field(default_factory=list, description="ISBN identifiers of additional record")
     issns: list[str] = Field(default_factory=list, description="ISSN identifiers of additional record")
 

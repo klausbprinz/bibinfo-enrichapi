@@ -1,7 +1,10 @@
+import asyncio
+import logging
+import httpx
+
 from lxml import etree
 from httpx import AsyncClient
-import asyncio
-
+from urllib.parse import quote
 from typing import Any
 
 from ..util import marc21parser as parse
@@ -26,32 +29,55 @@ from ..models.additionalRecsSRU import (
     AdditionalRec
 )
 
+logger = logging.getLogger(__name__)
+
 class SruService:
     
     def __init__(self, client: AsyncClient):
         self.client = client
-        self.base_url = "https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB"
+        self.baseUrl = "https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB"
         self.ns = {
             "srw": "http://www.loc.gov/zing/srw/", 
             "marc": "http://www.loc.gov/MARC21/slim"
         }
 
-    async def fetchRecord(self, identifier: str, id_type: str) -> etree._Element | None:
+    async def fetchRecord(self, identifier: str, idType: str) -> etree._Element | None:
         """Handles the HTTP lifecycle and parses raw XML into an lxml tree element."""
+        cleanId = identifier.strip()
+        safeId = quote(cleanId, safe="")
         
-        query = f'alma.barcode="{identifier}"' if id_type == "barcode" else f'alma.local_control_field_009="{identifier}"'
-        url = f"{self.base_url}?version=1.2&operation=searchRetrieve&query={query}"
+        # no double quotes around safeId -> try this now..
+        query = (
+            f'alma.barcode={safeId}' 
+            if idType == "barcode" 
+            else f'alma.local_control_field_009={safeId}'
+        )
         
-        res = await self.client.get(url)
-        res.raise_for_status()
+        url = f"{self.baseUrl}?version=1.2&operation=searchRetrieve&query={query}"
         
-        sruRoot = etree.fromstring(res.content)
-        recordElems = sruRoot.findall(".//srw:record", namespaces=self.ns)
-        
-        if len(recordElems) == 1:
-            return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns)
-        return None
+        try:
+            res = await self.client.get(url)
+            res.raise_for_status()
+            
+            sruRoot = etree.fromstring(res.content)
+            recordElems = sruRoot.findall(".//srw:record", namespaces=self.ns)
+            
+            if len(recordElems) == 1:
+                return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns)
+                
+            return None
 
+        except httpx.TimeoutException:
+            logger.error(f"Timeout connecting to SRU server for query: {query}")
+            return None
+        except httpx.HTTPError as exc:
+            logger.error(f"HTTP error during SRU fetch: {exc}")
+            return None
+        except etree.XMLSyntaxError as exc:
+            logger.error(f"Failed to parse SRU XML response: {exc}")
+            return None
+
+    
     def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
         """Transforms raw XML selectors into pydantic object."""
 
@@ -133,8 +159,8 @@ class SruService:
             genreForms=parse.extractGenreForms(marcRecord),
             subjectHeadings=parse.extractSubjectHeadings(marcRecord),
             classifications=classificationModels,
-            bibMaterialType="TODO",
-            bibResourceType="TODO",
+            bibMaterialType=parse.extractBibMaterialType(marcRecord),
+            bibResourceType=parse.extractBibResourceType(marcRecord),
             fullTextURLs=parse.extractFullTextURLs(marcRecord),
             abstracts=parse.extractAbstracts(marcRecord),
             tableOfContentURLs=parse.extractTableOfContentURLs(marcRecord),
@@ -150,87 +176,201 @@ class SruService:
         """
         tasks = []
         taskTypes = []
-
-        # reuse parsed Main Entry Author data
-        if data.fetchSimilarByAuthor and marcData.mainEntry and marcData.mainEntry.name:
-            authorName = marcData.mainEntry.name
-            tasks.append(self._executeSubsidiarySRU(f'alma.creator="{authorName}"', maxRecs=data.maxRecs))
-            taskTypes.append(("author", authorName))
-
-        # reuse parsed subject headings
-        if data.fetchSimilarBySubject and marcData.subjectHeadings:
-            
-            # marcData.subjectHeadings is list[str] of your SH values
-            queryStr = " OR ".join([f'alma.subject="{s}"' for s in marcData.subjectHeadings])
-            tasks.append(self._executeSubsidiarySRU(queryStr, maxRecs=data.maxRecs))
-            taskTypes.append(("subject", marcData.subjectHeadings))
-
-        # reuse parsed classifications
-        if data.fetchSimilarByClassification and marcData.classifications:
-            
-            # find first classification number available in your structured data list
-            validClasses = [c.classificationNumber for c in marcData.classifications if c.classificationNumber]
-            if validClasses:
-                # search using primary classification found
-                classNum = validClasses[0]
-                tasks.append(self._executeSubsidiarySRU(f'alma.other_class_number="{classNum}"', maxRecs=data.maxRecs))
-                taskTypes.append(("classification", classNum))
-
-        if not tasks:
-            return {"records": []}
-
-        # concurrent network execution
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
         finalRecords = []
-        for (category, criteria), res in zip(taskTypes, results):
-            if isinstance(res, Exception):
-                continue
-            
-            if category == "author":
+
+        # extract primaryBib identifier (controlfield 009)
+        baseAc = None
+        if marcData.identifier:
+            for idObj in marcData.identifier:
+                if idObj.idType == "primaryBib" and idObj.value:
+                    baseAc = idObj.value
+                    break
+
+        # author search
+        if data.fetchSimilarByAuthor:
+            if marcData.mainEntry and marcData.mainEntry.name:
+                authorName = marcData.mainEntry.name
+                tasks.append(
+                    self._executeSubsidiarySRU(
+                        f'alma.creator="{authorName}"', 
+                        baseIdentifier=baseAc, 
+                        maxRecs=data.maxRecs
+                    )
+                )
+                taskTypes.append(("author", authorName))
+            else:
+                # explicit empty return
                 finalRecords.append(
                     AdditionalRecsByAuthor(
                         searchType="author",
-                        name=criteria,
+                        name="",
                         maxRecs=data.maxRecs,
-                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                        additionalRecs=[]
                     )
                 )
-            elif category == "subject":
+
+        # subject headings search
+        if data.fetchSimilarBySubject:
+            if marcData.subjectHeadings:
+                queryStr = " AND ".join([f'alma.subject="{s}"' for s in marcData.subjectHeadings])
+                tasks.append(
+                    self._executeSubsidiarySRU(
+                        queryStr, 
+                        baseIdentifier=baseAc, 
+                        maxRecs=data.maxRecs
+                    )
+                )
+                taskTypes.append(("subject", marcData.subjectHeadings))
+            else:
                 finalRecords.append(
                     AdditionalRecsBySubjectHeadings(
                         searchType="subjectHeadings",
-                        subjectHeadings=criteria,
+                        subjectHeadings=[],
                         maxRecs=data.maxRecs,
-                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                        additionalRecs=[]
                     )
                 )
-            elif category == "classification":
+
+        # classifications search
+        if data.fetchSimilarByClassification:
+            targetClassifications = []
+            indexName = "alma.other_class_number"
+
+            if marcData.classifications:
+                # group available classification objects by scheme type (lowercase)
+                schemeMap: dict[str, list] = {}
+                for c in marcData.classifications:
+                    if not c.classificationNumber:
+                        continue
+                    ctype = (c.classificationType or "").lower().strip()
+                    schemeMap.setdefault(ctype, []).append(c)
+
+                # prioritization hierarchy: BKL -> RVK -> DDC -> Fallback to all others
+                chosenSchemeObjs = []
+                if "bkl" in schemeMap:
+                    chosenSchemeObjs = schemeMap["bkl"]
+                    indexName = "alma.other_class_number"
+                elif "rvk" in schemeMap:
+                    chosenSchemeObjs = schemeMap["rvk"]
+                    indexName = "alma.other_class_number"
+                elif "ddc" in schemeMap:
+                    chosenSchemeObjs = schemeMap["ddc"]
+                    indexName = "alma.dewey_decimal_class_number"
+                else:
+                    # flatten remaining non-empty schemes if none of top 3 are found
+                    chosenSchemeObjs = [c for cList in schemeMap.values() for c in cList]
+                    indexName = "alma.other_class_number"
+
+                targetClassifications = chosenSchemeObjs
+
+            if targetClassifications:
+                # extract numbers and deduplicate preserving order
+                classNumbers = list(dict.fromkeys([c.classificationNumber for c in targetClassifications]))
+                
+                # build SRU clauses joined by AND for precision matching
+                queryClauses = [f'{indexName}="{num}"' for num in classNumbers]
+                queryStr = " AND ".join(queryClauses)
+
+                tasks.append(
+                    self._executeSubsidiarySRU(
+                        queryStr, 
+                        baseIdentifier=baseAc, 
+                        maxRecs=data.maxRecs
+                    )
+                )
+                taskTypes.append(("classification", targetClassifications))
+            else:
                 finalRecords.append(
                     AdditionalRecsByClassification(
                         searchType="classification",
-                        classifications=marcData.classifications,
+                        classifications=[],
                         maxRecs=data.maxRecs,
-                        additionalRecs=[AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+                        additionalRecs=[]
                     )
                 )
+
+        # execute dynamic tasks concurrently
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for (category, criteria), res in zip(taskTypes, results):
+                if isinstance(res, Exception):
+                    recs = []
+                else:
+                    recs = [AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
+
+                if category == "author":
+                    finalRecords.append(
+                        AdditionalRecsByAuthor(
+                            searchType="author",
+                            name=criteria,
+                            maxRecs=data.maxRecs,
+                            additionalRecs=recs
+                        )
+                    )
+                elif category == "subject":
+                    finalRecords.append(
+                        AdditionalRecsBySubjectHeadings(
+                            searchType="subjectHeadings",
+                            subjectHeadings=criteria,
+                            maxRecs=data.maxRecs,
+                            additionalRecs=recs
+                        )
+                    )
+                elif category == "classification":
+                    finalRecords.append(
+                        AdditionalRecsByClassification(
+                            searchType="classification",
+                            classifications=marcData.classifications,
+                            maxRecs=data.maxRecs,
+                            additionalRecs=recs
+                        )
+                    )
 
         return {"records": finalRecords}
     
 
-    async def _executeSubsidiarySRU(self, queryString: str, maxRecs: int = 5) -> list:
-        """Helper network worker to parse response records from subsequent queries."""
+    async def _executeSubsidiarySRU(
+        self, 
+        queryString: str, 
+        baseIdentifier: str | None = None, 
+        maxRecs: int = 5
+    ) -> list[dict]:
+        """Helper network worker to fetch and parse response records from subsidiary queries."""
         
-        # this is where nested SRU HTTP fetch will take place
-        # for prototype setup, return an empty array or basic simulation structure
-        # url = f"{self.base_url}?version=1.2&operation=searchRetrieve&query={queryString}&maximumRecords=5"
-        return [
-            {
-                "ac": "AC99999999", 
-                "callNumbers": ["MOCK-123"], 
-                "barcodes": [], 
-                "isbns": [], 
-                "issns": []
-            }
-        ]
+        # always fetch 1 extra record to account for potential base record inclusion
+        fetchCount = maxRecs + 1 if baseIdentifier else maxRecs
+
+        params = {
+            "version": "1.2",
+            "operation": "searchRetrieve",
+            "query": queryString,
+            "maximumRecords": str(fetchCount)
+        }
+
+        try:
+            res = await self.client.get(self.baseUrl, params=params)
+            res.raise_for_status()
+
+            sruRoot = etree.fromstring(res.content)
+            recordDataElems = sruRoot.findall(".//srw:recordData/marc:record", namespaces=self.ns)
+
+            extractedRecords = []
+            baseIdClean = baseIdentifier.strip() if baseIdentifier else None
+
+            for recordElem in recordDataElems:
+                recDict = parse.extractAdditionalRecData(recordElem)
+                
+                # guardrail 1: filter out base record if matched
+                if baseIdClean and recDict.get("ac") == baseIdClean:
+                    continue
+
+                extractedRecords.append(recDict)
+
+            # guardrail 2: enforce strict maxRecs upper limit regardless of whether 0 or 1 item was filtered
+            return extractedRecords[:maxRecs]
+
+        except Exception as e:
+            # re-raise so asyncio.gather(return_exceptions=True) catches it cleanly per task
+            raise e
     

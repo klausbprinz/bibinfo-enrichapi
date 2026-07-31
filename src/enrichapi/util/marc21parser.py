@@ -1,5 +1,7 @@
 from lxml import etree
 
+from .almaType import getBibMaterialType, getResourceType
+
 nsMap = {"marc": "http://www.loc.gov/MARC21/slim"}
 
 def extractSubfield(
@@ -223,48 +225,63 @@ def extractTableOfContentURLs(marcRecord: etree._Element) -> list[str]:
     # return deduplicated list while preserving order
     return list(dict.fromkeys(tocList))
 
-def extractIdentifier(marcRecord: etree._Element) -> list[str]:
+def extractIdentifier(marcRecord: etree._Element) -> list[dict]:
     fieldDataList = []
 
-    for idElem in marcRecord.xpath(
-        'marc:datafield[@tag="020" or @tag="022" or @tag="024" or @tag="035"]',
-        namespaces=nsMap
-    ):
-        sfa = idElem.find('marc:subfield[@code="a"]', namespaces=nsMap)
-        identifier = sfa.text.strip() if (sfa is not None and sfa.text) else None
+    xpathQuery = (
+        'marc:datafield[@tag="020" or @tag="022" or @tag="024" or @tag="035"] | '
+        'marc:controlfield[@tag="001" or @tag="009"]'
+    )
 
-        # proceed only if extracted id
-        if not identifier:
-            continue
-
+    for idElem in marcRecord.xpath(xpathQuery, namespaces=nsMap):
+        identifier = None
+        idType = None
         prefix = None
         additionalInfos = []
-
         tag = idElem.attrib.get("tag", "")
-        if tag == "020":
-            idType = "isbn"
-            sfqElems = idElem.findall('marc:subfield[@code="q"]', namespaces=nsMap)
-            additionalInfos = [sfqElem.text for sfqElem in sfqElems]  
-        elif tag == "022":
-            idType = "issn"
-        elif tag == "024":
-            idType = "other"
-            sfq2Elems = idElem.xpath('marc:subfield[@code="q" or @code="2"]', namespaces=nsMap)
-            additionalInfos = [sfq2Elem.text for sfq2Elem in sfq2Elems]  
-        elif tag == "035":
-            idType = "systemId"
-            if ")" in identifier:
-                prefixPart, mainPart = identifier.split(")", 1)
-                prefix = prefixPart + ")"
-                identifier = mainPart.strip()
 
+        if idElem.tag.endswith("datafield"):
+            sfa = idElem.find('marc:subfield[@code="a"]', namespaces=nsMap)
+            identifier = sfa.text.strip() if (sfa is not None and sfa.text) else None
 
-        fieldDataList.append({
-            "value": identifier,
-            "idType": idType,
-            "prefix": prefix,
-            "additionalInfos": additionalInfos
-        })
+            if not identifier:
+                continue
+
+            if tag == "020":
+                idType = "isbn"
+                sfqElems = idElem.findall('marc:subfield[@code="q"]', namespaces=nsMap)
+                additionalInfos = [sfqElem.text for sfqElem in sfqElems if sfqElem.text]  
+            elif tag == "022":
+                idType = "issn"
+            elif tag == "024":
+                idType = "other"
+                sfq2Elems = idElem.xpath('marc:subfield[@code="q" or @code="2"]', namespaces=nsMap)
+                additionalInfos = [sfq2Elem.text for sfq2Elem in sfq2Elems if sfq2Elem.text]  
+            elif tag == "035":
+                idType = "systemId"
+                if ")" in identifier:
+                    prefixPart, mainPart = identifier.split(")", 1)
+                    prefix = prefixPart + ")"
+                    identifier = mainPart.strip()
+
+        elif idElem.tag.endswith("controlfield"):
+            identifier = idElem.text.strip() if idElem.text else None
+            
+            if not identifier:
+                continue
+
+            if tag == "001":
+                idType = "almaBib"
+            elif tag == "009":
+                idType = "primaryBib"
+
+        if identifier and idType:
+            fieldDataList.append({
+                "value": identifier,
+                "idType": idType,
+                "prefix": prefix,
+                "additionalInfos": additionalInfos
+            })
 
     return fieldDataList
 
@@ -310,3 +327,64 @@ def extractHoldingInfos(marcRecord: etree._Element) -> list[dict]:
 
     return holdingsList
 
+
+def extractBibMaterialType(marcRecord: etree._Element) -> str | None:
+
+    ldrElem = marcRecord.find('marc:leader', namespaces=nsMap)
+    ldrStr = ldrElem.text if (ldrElem is not None and ldrElem.text) else None
+
+    return getBibMaterialType(ldrStr)
+
+
+def extractBibResourceType(marcRecord: etree._Element) -> str | None:
+
+    ldrElem = marcRecord.find('marc:leader', namespaces=nsMap)
+    ldrStr = ldrElem.text if (ldrElem is not None and ldrElem.text) else None
+
+    cf008Elem = marcRecord.find('marc:controlfield[@tag="008"]', namespaces=nsMap)
+    cf008Str = cf008Elem.text if (cf008Elem is not None and cf008Elem.text) else None
+
+    return getResourceType(ldrStr, cf008Str)
+
+
+def extractAdditionalRecData(marcRecord: etree._Element) -> dict:
+    """Extracts minimal identifier data (AC number, call numbers, ISBNs, ISSNs) for subsidiary records."""
+    
+    # AC Number (System Control Number from 009 or 035 $a with (AT-OBV) / AC prefix)
+    acNumber = None
+    
+    # check 009 first (Control Number in OBV)
+    df009 = marcRecord.find('marc:controlfield[@tag="009"]', namespaces=nsMap)
+    if df009 is not None and df009.text:
+        acNumber = df009.text.strip()
+    
+    # fallback to 035 $a if 009 isn't present
+    if not acNumber:
+        for df035 in marcRecord.findall('marc:datafield[@tag="035"]/marc:subfield[@code="a"]', namespaces=nsMap):
+            if df035.text and "AC" in df035.text:
+                txt = df035.text.strip()
+                acNumber = txt.split(")")[-1] if ")" in txt else txt
+                break
+
+    # titleMain
+    titleMain = extractSubfield(marcRecord, "245", "a")
+
+    # call Numbers (AVA $d subfields or 084/090/050 $a)
+    callNumbers = extractSubfieldsList(marcRecord, "AVA", "d")
+
+    # ISBNs (020 $a)
+    rawIsbns = extractSubfieldsList(marcRecord, "020", "a")
+    # clean ISBNs (take only the raw digits/X part before any space or qualifier)
+    isbns = [isbn.split()[0] for isbn in rawIsbns]
+
+    # ISSNs (022 $a)
+    rawIssns = extractSubfieldsList(marcRecord, "022", "a")
+    issns = [issn.split()[0] for issn in rawIssns]
+
+    return {
+        "ac": acNumber or "UNKNOWN",
+        "titleMain": titleMain,
+        "callNumbers": list(dict.fromkeys(callNumbers)),
+        "isbns": list(dict.fromkeys(isbns)),
+        "issns": list(dict.fromkeys(issns))
+    }
