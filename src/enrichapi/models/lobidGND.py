@@ -21,25 +21,30 @@ class LobidGndSameAs(BaseModel):
 
 
 class LobidGndGeographicAreaCode(BaseModel):
-    
     code: str | None = Field(default=None, description="Extracted code, e.g. XA-AT")
     idURL: str | None = Field(default=None, alias="id", description="Full URL string")
+    label: str | None = Field(default=None, alias="label", description="Human-readable location label, e.g. Österreich")
 
     @model_validator(mode="before")
     @classmethod
     def extractCodeAndUrl(cls, raw: Any) -> Any:
         if isinstance(raw, dict):
-            # grab full URL from 'id'
+            # grab the full URL from 'id'
             fullUrl = raw.get("id")
             if isinstance(fullUrl, str):
-                # ensure idURL gets populated
                 raw["idURL"] = fullUrl
                 
-                # extract fragment after '#' (e.g. "XA-AT") if present
+                # extract code after '#' or trailing path
                 if "#" in fullUrl:
                     raw["code"] = fullUrl.split("#")[-1]
                 else:
                     raw["code"] = fullUrl.rstrip("/").split("/")[-1]
+                    
+            # label passes through automatically via alias="label", 
+            # but explicitly preserve it just in case
+            if "label" in raw:
+                raw["label"] = raw.get("label")
+                
         return raw
 
 
