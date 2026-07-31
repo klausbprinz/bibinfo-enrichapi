@@ -1,3 +1,5 @@
+# with lobid/json -> pydantic can do the heavy lifting
+
 from typing import Literal, Union, Annotated, Any
 from pydantic import BaseModel, Field, Discriminator, Tag
 
@@ -123,19 +125,25 @@ class DefaultLobidGND(BaseLobidGND):
 
 # discriminator function to determine the model dynamically
 def resolveGndType(v: Any) -> str:
-
-    # handle Pydantic model instance as well as dict
+    # extract types list from dict or model instance
+    types = []
     if isinstance(v, BaseModel):
-        entityType = getattr(v, "entityType", None)
+        types = getattr(v, "entityTypes", []) or getattr(v, "type", [])
     elif isinstance(v, dict):
-        entityType = v.get("entityType")
-    else:
-        entityType = None
-    # if it's a known type, route it to specific model
-    if entityType in ("Person", "CorporateBody", "Event", "Work", "PlaceOrGeographicName", "SubjectHeading"):
-        return entityType
+        types = v.get("type", []) or v.get("entityTypes", [])
+    
+    if isinstance(types, str):
+        types = [types]
 
-    # otherwise, route it to our catch-all fallback model
+    # inspect type array for matching entity tag
+    if "Person" in types:
+        return "person"
+    if "CorporateBody" in types:
+        return "corporate"
+    if any(t in types for t in ("Event", "ConferenceOrEvent")):
+        return "conferenceOrEvent"
+
+    # fallback tag for Geografikum, Sachbegriff, Werk, etc.
     return "default"
 
 
