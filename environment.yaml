@@ -4,7 +4,7 @@ channels:
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
-  - python=3.13
-  - pydantic
   - fastapi
   - lxml
+  - python=3.13
+  - pydantic

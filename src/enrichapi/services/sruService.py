@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from urllib.parse import quote
 from typing import Any
 
-from ..util import marc21parser as parse
+from ..utils import marc21parser as parse
 
 from ..models.basicMarc21MD import (
     BasicMarc21MD, 
