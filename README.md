@@ -11,7 +11,7 @@ ticketId: ""
 
 # bibinfo-enrichapi
 
-> **Quick Summary:** A modular, high-performance FastAPI service designed to fetch, parse, and asynchronously enrich library MARC21 bibliographic records (ÖNB/SRU) with linked data authority files (Lobid GND), knowledge graphs (Wikidata SPARQL), Open Library book covers, and Google Books abstracts.
+> **Quick Summary:** A modular FastAPI service designed to fetch, parse, and asynchronously enrich library MARC21 bibliographic records (ÖNB/SRU) with linked data authority files (Lobid GND), knowledge graphs (Wikidata SPARQL), Open Library book covers, and Google Books abstracts.
 
 ---
 
@@ -57,7 +57,7 @@ podman run -d -p 8000:8000 --name enrichapi enrichapi:latest
 
 
 ## Context & Objectives
-`bibinfo-enrichapi` provides a unified, highly efficient JSON endpoint (`POST /enrich`) for fetching and augmenting MARC21 bibliographic data with external authority services.
+`bibinfo-enrichapi` provides a unified JSON endpoint (`POST /enrich`) for fetching and augmenting MARC21 bibliographic data with external authority services.
 
 - Sequential Phase 1 (Core Retrieval): Queries institutional SRU servers (such as the ÖNB - Austrian National Library) by AC-Number or Barcode to retrieve raw MARC21 XML, which is parsed into structured Pydantic models.
 - Parallel Phase 2 (Async Concurrent Enrichment): Uses non-blocking `asyncio.gather` with `httpx` to concurrently fetch:
