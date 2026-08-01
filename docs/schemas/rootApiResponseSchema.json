@@ -1,0 +1,2411 @@
+{
+  "$defs": {
+    "AdditionalRec": {
+      "properties": {
+        "ac": {
+          "description": "AC/009 identifier of additional record",
+          "title": "Ac",
+          "type": "string"
+        },
+        "titleMain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Title (245a NR)",
+          "title": "Titlemain"
+        },
+        "callNumbers": {
+          "description": "Call number identifiers of additional record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Callnumbers",
+          "type": "array"
+        },
+        "isbns": {
+          "description": "ISBN identifiers of additional record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Isbns",
+          "type": "array"
+        },
+        "issns": {
+          "description": "ISSN identifiers of additional record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Issns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ac",
+        "titleMain"
+      ],
+      "title": "AdditionalRec",
+      "type": "object"
+    },
+    "AdditionalRecsByAuthor": {
+      "properties": {
+        "searchType": {
+          "const": "author",
+          "default": "author",
+          "title": "Searchtype",
+          "type": "string"
+        },
+        "name": {
+          "description": "Author name to search via SRU",
+          "title": "Name",
+          "type": "string"
+        },
+        "maxRecs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of additional records",
+          "title": "Maxrecs"
+        },
+        "additionalRecs": {
+          "description": "Additional records",
+          "items": {
+            "$ref": "#/$defs/AdditionalRec"
+          },
+          "title": "Additionalrecs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "AdditionalRecsByAuthor",
+      "type": "object"
+    },
+    "AdditionalRecsByClassification": {
+      "properties": {
+        "searchType": {
+          "const": "classification",
+          "default": "classification",
+          "title": "Searchtype",
+          "type": "string"
+        },
+        "classifications": {
+          "description": "Classifications to search via SRU",
+          "items": {
+            "$ref": "#/$defs/Marc21MdClassificationNumber"
+          },
+          "title": "Classifications",
+          "type": "array"
+        },
+        "maxRecs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of additional records",
+          "title": "Maxrecs"
+        },
+        "additionalRecs": {
+          "description": "Additional records",
+          "items": {
+            "$ref": "#/$defs/AdditionalRec"
+          },
+          "title": "Additionalrecs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "classifications"
+      ],
+      "title": "AdditionalRecsByClassification",
+      "type": "object"
+    },
+    "AdditionalRecsBySubjectHeadings": {
+      "properties": {
+        "searchType": {
+          "const": "subjectHeadings",
+          "default": "subjectHeadings",
+          "title": "Searchtype",
+          "type": "string"
+        },
+        "subjectHeadings": {
+          "description": "Subject headings to search via SRU",
+          "items": {
+            "type": "string"
+          },
+          "title": "Subjectheadings",
+          "type": "array"
+        },
+        "maxRecs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of additional records",
+          "title": "Maxrecs"
+        },
+        "additionalRecs": {
+          "description": "Additional records",
+          "items": {
+            "$ref": "#/$defs/AdditionalRec"
+          },
+          "title": "Additionalrecs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subjectHeadings"
+      ],
+      "title": "AdditionalRecsBySubjectHeadings",
+      "type": "object"
+    },
+    "AdditionalRecsSRU": {
+      "properties": {
+        "records": {
+          "description": "Data from defined avenues to fetch additional records",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AdditionalRecsByAuthor"
+              },
+              {
+                "$ref": "#/$defs/AdditionalRecsBySubjectHeadings"
+              },
+              {
+                "$ref": "#/$defs/AdditionalRecsByClassification"
+              },
+              {
+                "$ref": "#/$defs/DefaultAdditionalRecs"
+              }
+            ]
+          },
+          "title": "Records",
+          "type": "array"
+        }
+      },
+      "title": "AdditionalRecsSRU",
+      "type": "object"
+    },
+    "ArchivalResponse": {
+      "description": "Future proofing: wraps archive-based networks.",
+      "properties": {
+        "iType": {
+          "const": "archive",
+          "default": "archive",
+          "title": "Itype",
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": true,
+          "description": "Placeholder for archival metadata structure",
+          "title": "Result",
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "ArchivalResponse",
+      "type": "object"
+    },
+    "BasicMarc21MD": {
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Marc21MdTitle",
+          "default": null,
+          "description": "Title information (245abnp NR)"
+        },
+        "mainEntry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Marc21MdMainEntry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Main entry information (100/110/111a40 NR)"
+        },
+        "addedEntries": {
+          "description": "List of added entry information (700/710/711a40 R)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdAddedEntry"
+          },
+          "title": "Addedentries",
+          "type": "array"
+        },
+        "languageCodes": {
+          "description": "Language codes of text/sound track or separate title (041a R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Languagecodes",
+          "type": "array"
+        },
+        "languageCodesOriginal": {
+          "description": "Language codes of original (041h R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Languagecodesoriginal",
+          "type": "array"
+        },
+        "publicationCountryCodes": {
+          "description": "Country of Publishing/Producing Entity Code ISO (044c R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Publicationcountrycodes",
+          "type": "array"
+        },
+        "edition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Edition Statement (250a NR)",
+          "title": "Edition"
+        },
+        "physicalDescriptions": {
+          "description": "Physical Description (300 R)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdPhysDescription"
+          },
+          "title": "Physicaldescriptions",
+          "type": "array"
+        },
+        "publicationNotices": {
+          "description": "Publication Notice (264 R)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdPublicationNotice"
+          },
+          "title": "Publicationnotices",
+          "type": "array"
+        },
+        "genreForms": {
+          "description": "Index Term-Genre/Form ( 655#7a R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Genreforms",
+          "type": "array"
+        },
+        "subjectHeadings": {
+          "description": "Subject Headings from 650a, 689a (second indicator != #)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Subjectheadings",
+          "type": "array"
+        },
+        "classifications": {
+          "description": "Classification Number: DDC or other (082/084)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdClassificationNumber"
+          },
+          "title": "Classifications",
+          "type": "array"
+        },
+        "bibMaterialType": {
+          "default": "other",
+          "description": "Mapping from leader",
+          "title": "Bibmaterialtype",
+          "type": "string"
+        },
+        "bibResourceType": {
+          "default": "other",
+          "description": "Mapping from leader and 008",
+          "title": "Bibresourcetype",
+          "type": "string"
+        },
+        "fullTextURLs": {
+          "description": "Full text URLs (856u if 8563 == 'Volltext')",
+          "items": {
+            "type": "string"
+          },
+          "title": "Fulltexturls",
+          "type": "array"
+        },
+        "abstracts": {
+          "description": "Summary, etc. 520a",
+          "items": {
+            "type": "string"
+          },
+          "title": "Abstracts",
+          "type": "array"
+        },
+        "tableOfContentURLs": {
+          "description": "Table of content URLs (856u if 8563 == 'Inhaltsverzeichnis')",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tableofcontenturls",
+          "type": "array"
+        },
+        "identifier": {
+          "description": "Identifier and additional infos (035a, 020a, 022a, 024a)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdIdentifier"
+          },
+          "title": "Identifier",
+          "type": "array"
+        },
+        "holdingInfos": {
+          "description": "Holding Information: Lib, Loc, CN (AVA R)",
+          "items": {
+            "$ref": "#/$defs/Marc21MdHoldingInfos"
+          },
+          "title": "Holdinginfos",
+          "type": "array"
+        }
+      },
+      "title": "BasicMarc21MD",
+      "type": "object"
+    },
+    "BibliographicLibraryResponse": {
+      "description": "Wraps traditional book-based library networks.",
+      "properties": {
+        "iType": {
+          "const": "bib",
+          "default": "bib",
+          "title": "Itype",
+          "type": "string"
+        },
+        "result": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OenbResponse"
+            },
+            {
+              "$ref": "#/$defs/DnbResponse"
+            }
+          ],
+          "title": "Result"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "BibliographicLibraryResponse",
+      "type": "object"
+    },
+    "BookCoverOpenLibrary": {
+      "properties": {
+        "imageSize": {
+          "default": "M",
+          "description": "Size of cover image to retrieve via URL",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ],
+          "title": "Imagesize",
+          "type": "string"
+        },
+        "isbn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISBN identifier to fetch cover image for",
+          "title": "Isbn"
+        },
+        "coverURL": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Computed Open Library covers endpoint URL",
+          "title": "Coverurl"
+        }
+      },
+      "title": "BookCoverOpenLibrary",
+      "type": "object"
+    },
+    "ConferenceOrEventLobidGND": {
+      "properties": {
+        "type": {
+          "description": "Information on type of GND record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Type",
+          "type": "array"
+        },
+        "preferredName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferredname"
+        },
+        "biographicalOrHistoricalInformation": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Biographicalorhistoricalinformation",
+          "type": "array"
+        },
+        "depiction": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depiction",
+          "type": "array"
+        },
+        "geographicAreaCode": {
+          "items": {
+            "$ref": "#/$defs/LobidGndGeographicAreaCode"
+          },
+          "title": "Geographicareacode",
+          "type": "array"
+        },
+        "sameAs": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSameAs"
+          },
+          "title": "Sameas",
+          "type": "array"
+        },
+        "homepage": {
+          "items": {
+            "$ref": "#/$defs/LobidGndHomepage"
+          },
+          "title": "Homepage",
+          "type": "array"
+        },
+        "gndSubjectCategory": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSubjectCategory"
+          },
+          "title": "Gndsubjectcategory",
+          "type": "array"
+        },
+        "gndType": {
+          "const": "conferenceOrEvent",
+          "default": "conferenceOrEvent",
+          "title": "Gndtype",
+          "type": "string"
+        },
+        "variantName": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Variantname",
+          "type": "array"
+        },
+        "dateOfConferenceOrEvent": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dateofconferenceorevent",
+          "type": "array"
+        },
+        "placeOfConferenceOrEvent": {
+          "items": {
+            "$ref": "#/$defs/LobidGndPlaceOfConferenceOrEvent"
+          },
+          "title": "Placeofconferenceorevent",
+          "type": "array"
+        },
+        "relatedConferenceOrEvent": {
+          "items": {
+            "$ref": "#/$defs/LobidGndRelatedConferenceOrEvent"
+          },
+          "title": "Relatedconferenceorevent",
+          "type": "array"
+        },
+        "sponsorOrPatron": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSponsorOrPatron"
+          },
+          "title": "Sponsororpatron",
+          "type": "array"
+        }
+      },
+      "title": "ConferenceOrEventLobidGND",
+      "type": "object"
+    },
+    "CorporateLobidGND": {
+      "properties": {
+        "type": {
+          "description": "Information on type of GND record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Type",
+          "type": "array"
+        },
+        "preferredName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferredname"
+        },
+        "biographicalOrHistoricalInformation": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Biographicalorhistoricalinformation",
+          "type": "array"
+        },
+        "depiction": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depiction",
+          "type": "array"
+        },
+        "geographicAreaCode": {
+          "items": {
+            "$ref": "#/$defs/LobidGndGeographicAreaCode"
+          },
+          "title": "Geographicareacode",
+          "type": "array"
+        },
+        "sameAs": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSameAs"
+          },
+          "title": "Sameas",
+          "type": "array"
+        },
+        "homepage": {
+          "items": {
+            "$ref": "#/$defs/LobidGndHomepage"
+          },
+          "title": "Homepage",
+          "type": "array"
+        },
+        "gndSubjectCategory": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSubjectCategory"
+          },
+          "title": "Gndsubjectcategory",
+          "type": "array"
+        },
+        "gndType": {
+          "const": "corporate",
+          "default": "corporate",
+          "title": "Gndtype",
+          "type": "string"
+        },
+        "variantName": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Variantname",
+          "type": "array"
+        },
+        "placeOfBusiness": {
+          "items": {
+            "$ref": "#/$defs/LobidGndPlaceOfBusiness"
+          },
+          "title": "Placeofbusiness",
+          "type": "array"
+        },
+        "spatialAreaOfActivity": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSpatialAreaOfActivity"
+          },
+          "title": "Spatialareaofactivity",
+          "type": "array"
+        },
+        "dateOfEstablishment": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dateofestablishment",
+          "type": "array"
+        }
+      },
+      "title": "CorporateLobidGND",
+      "type": "object"
+    },
+    "DataLobidGND": {
+      "properties": {
+        "gndId": {
+          "description": "GND ID to use for enrichment",
+          "title": "Gndid",
+          "type": "string"
+        },
+        "gndInformation": {
+          "description": "Use lobid API: https://lobid.org/gnd/<gndid>.json with fallback routing",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PersonLobidGND"
+            },
+            {
+              "$ref": "#/$defs/CorporateLobidGND"
+            },
+            {
+              "$ref": "#/$defs/ConferenceOrEventLobidGND"
+            },
+            {
+              "$ref": "#/$defs/DefaultLobidGND"
+            }
+          ],
+          "title": "Gndinformation"
+        }
+      },
+      "required": [
+        "gndId",
+        "gndInformation"
+      ],
+      "title": "DataLobidGND",
+      "type": "object"
+    },
+    "DataWikidata": {
+      "properties": {
+        "wikidataId": {
+          "description": "Wikidata Q-ID used for enrichment",
+          "title": "Wikidataid",
+          "type": "string"
+        },
+        "wikidataInformation": {
+          "description": "Structured Wikidata information parsed dynamically",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/WikidataPerson"
+            },
+            {
+              "$ref": "#/$defs/WikidataCorporate"
+            },
+            {
+              "$ref": "#/$defs/WikidataConferenceEvent"
+            },
+            {
+              "$ref": "#/$defs/DefaultWikidata"
+            }
+          ],
+          "title": "Wikidatainformation"
+        }
+      },
+      "required": [
+        "wikidataId",
+        "wikidataInformation"
+      ],
+      "title": "DataWikidata",
+      "type": "object"
+    },
+    "DefaultAdditionalRecs": {
+      "description": "Safety net. If new search avenue is added upstream, \nthis captures the metadata safely instead of crashing the API parser.",
+      "properties": {
+        "searchType": {
+          "description": "Fallback for unmapped search strategies",
+          "title": "Searchtype",
+          "type": "string"
+        },
+        "maxRecs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxrecs"
+        },
+        "additionalRecs": {
+          "items": {
+            "$ref": "#/$defs/AdditionalRec"
+          },
+          "title": "Additionalrecs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "searchType"
+      ],
+      "title": "DefaultAdditionalRecs",
+      "type": "object"
+    },
+    "DefaultLobidGND": {
+      "description": "This model catches any entity types that are not explicitly structured yet \n(e.g., Geografikum, Sachbegriff, Werk). It won't crash the API.",
+      "properties": {
+        "type": {
+          "description": "Information on type of GND record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Type",
+          "type": "array"
+        },
+        "preferredName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferredname"
+        },
+        "biographicalOrHistoricalInformation": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Biographicalorhistoricalinformation",
+          "type": "array"
+        },
+        "depiction": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depiction",
+          "type": "array"
+        },
+        "geographicAreaCode": {
+          "items": {
+            "$ref": "#/$defs/LobidGndGeographicAreaCode"
+          },
+          "title": "Geographicareacode",
+          "type": "array"
+        },
+        "sameAs": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSameAs"
+          },
+          "title": "Sameas",
+          "type": "array"
+        },
+        "homepage": {
+          "items": {
+            "$ref": "#/$defs/LobidGndHomepage"
+          },
+          "title": "Homepage",
+          "type": "array"
+        },
+        "gndSubjectCategory": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSubjectCategory"
+          },
+          "title": "Gndsubjectcategory",
+          "type": "array"
+        },
+        "gndType": {
+          "default": "default",
+          "description": "Fallback for unmapped or generic GND types",
+          "title": "Gndtype",
+          "type": "string"
+        }
+      },
+      "title": "DefaultLobidGND",
+      "type": "object"
+    },
+    "DefaultWikidata": {
+      "properties": {
+        "P31": {
+          "description": "Instance of (P31)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P31",
+          "type": "array"
+        },
+        "P18": {
+          "description": "Image (P18)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P18",
+          "type": "array"
+        },
+        "wikidataType": {
+          "const": "default",
+          "default": "default",
+          "title": "Wikidatatype",
+          "type": "string"
+        }
+      },
+      "title": "DefaultWikidata",
+      "type": "object"
+    },
+    "DescriptionGoogleBooks": {
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "https://www.googleapis.com/books/v1/volumes?q=isbn:<ISBN> , may need an API key at some point,\n                    ca. 100 calls per day for free, get info at items elem, list[0], volumeInfoElem, description text node\n                    could also try to use OpenLibrary: access via ISBN, the get work Id then access via work ID,\n                    look for description elem, value text node\n                    ",
+          "title": "Description"
+        }
+      },
+      "title": "DescriptionGoogleBooks",
+      "type": "object"
+    },
+    "DnbResponse": {
+      "description": "The explicit footprint for the German National Library.",
+      "properties": {
+        "identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "System identifier (e.g., Barcode or Bib Identifier)",
+          "title": "Identifier"
+        },
+        "basicMarc21MD": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BasicMarc21MD"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Basic Marc21 metadata"
+        },
+        "additionalRecsSRU": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AdditionalRecsSRU"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Similar Records via SRU"
+        },
+        "gndInfoLobid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataLobidGND"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Lobid GND API"
+        },
+        "wikidataData": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataWikidata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Wikidata SPARQL"
+        },
+        "bookCover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BookCoverOpenLibrary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Book cover fetched via Open Library"
+        },
+        "bookDescription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescriptionGoogleBooks"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Description fetched via GoogleBooks"
+        },
+        "iName": {
+          "const": "dnb",
+          "default": "dnb",
+          "title": "Iname",
+          "type": "string"
+        }
+      },
+      "title": "DnbResponse",
+      "type": "object"
+    },
+    "LobidGndAffiliation": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndAffiliation",
+      "type": "object"
+    },
+    "LobidGndGeographicAreaCode": {
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Extracted code, e.g. XA-AT",
+          "title": "Code"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Full URL string",
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable location label, e.g. Österreich",
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndGeographicAreaCode",
+      "type": "object"
+    },
+    "LobidGndHomepage": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndHomepage",
+      "type": "object"
+    },
+    "LobidGndPlaceOfBusiness": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndPlaceOfBusiness",
+      "type": "object"
+    },
+    "LobidGndPlaceOfConferenceOrEvent": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndPlaceOfConferenceOrEvent",
+      "type": "object"
+    },
+    "LobidGndRelatedConferenceOrEvent": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndRelatedConferenceOrEvent",
+      "type": "object"
+    },
+    "LobidGndSameAs": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "collectionName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collectionname"
+        }
+      },
+      "title": "LobidGndSameAs",
+      "type": "object"
+    },
+    "LobidGndSpatialAreaOfActivity": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndSpatialAreaOfActivity",
+      "type": "object"
+    },
+    "LobidGndSponsorOrPatron": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndSponsorOrPatron",
+      "type": "object"
+    },
+    "LobidGndSubjectCategory": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "LobidGndSubjectCategory",
+      "type": "object"
+    },
+    "Marc21MdAddedEntry": {
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name (700/710/711a NR)",
+          "title": "Name"
+        },
+        "nameType": {
+          "anyOf": [
+            {
+              "enum": [
+                "person",
+                "corporate",
+                "conferenceOrEvent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type of name in added entry",
+          "title": "Nametype"
+        },
+        "relator": {
+          "description": "Codes for relationship between a name and a work (700/710/7114 R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Relator",
+          "type": "array"
+        },
+        "gndIdentifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "GND-ID (700/710/7110 NR)",
+          "title": "Gndidentifier"
+        }
+      },
+      "title": "Marc21MdAddedEntry",
+      "type": "object"
+    },
+    "Marc21MdClassificationNumber": {
+      "properties": {
+        "classificationType": {
+          "default": "other",
+          "description": "if 082a: 'ddc', if 084a: value from $$2",
+          "title": "Classificationtype",
+          "type": "string"
+        },
+        "classificationNumber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "082a/084a NR",
+          "title": "Classificationnumber"
+        }
+      },
+      "title": "Marc21MdClassificationNumber",
+      "type": "object"
+    },
+    "Marc21MdHoldingInfos": {
+      "properties": {
+        "libraryCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Library Code (AVAb NR)",
+          "title": "Librarycode"
+        },
+        "libraryLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Library Label (AVAc NR)",
+          "title": "Librarylabel"
+        },
+        "locationCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Location Code (AVAj NR)",
+          "title": "Locationcode"
+        },
+        "locationLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Location Label (AVAq NR)",
+          "title": "Locationlabel"
+        },
+        "callNumber": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Call Number (AVAd NR)",
+          "title": "Callnumber"
+        },
+        "itemInfos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Marc21MdItemInfos"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Number of items and availability"
+        }
+      },
+      "title": "Marc21MdHoldingInfos",
+      "type": "object"
+    },
+    "Marc21MdIdentifier": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Identifier text value",
+          "title": "Value"
+        },
+        "idType": {
+          "anyOf": [
+            {
+              "enum": [
+                "isbn",
+                "issn",
+                "other",
+                "systemId",
+                "primaryBib",
+                "almaBib"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type of ID: isbn (020a), issn (022a), other (024a), systemId (035a), primaryBib (009), almaBib (001)",
+          "title": "Idtype"
+        },
+        "prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Prefix of Identifier, e.g. '(AT-OBV)' in 035a",
+          "title": "Prefix"
+        },
+        "additionalInfos": {
+          "description": "Explanatory information, e.g. ISBN (024q R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Additionalinfos",
+          "type": "array"
+        }
+      },
+      "title": "Marc21MdIdentifier",
+      "type": "object"
+    },
+    "Marc21MdItemInfos": {
+      "properties": {
+        "numOfItems": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Number of Items (AVAf NR)",
+          "title": "Numofitems"
+        },
+        "availability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Library Label (AVAe NR)",
+          "title": "Availability"
+        }
+      },
+      "title": "Marc21MdItemInfos",
+      "type": "object"
+    },
+    "Marc21MdMainEntry": {
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name (100/110/111a NR)",
+          "title": "Name"
+        },
+        "nameType": {
+          "anyOf": [
+            {
+              "enum": [
+                "person",
+                "corporate",
+                "conferenceOrEvent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type of name in main entry",
+          "title": "Nametype"
+        },
+        "relator": {
+          "description": "Codes for relationship between a name and a work (100/110/1114 R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Relator",
+          "type": "array"
+        },
+        "gndIdentifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "GND-ID (100/110/1110 NR)",
+          "title": "Gndidentifier"
+        }
+      },
+      "title": "Marc21MdMainEntry",
+      "type": "object"
+    },
+    "Marc21MdPhysDescription": {
+      "properties": {
+        "extent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Number of physical pages, volumes, cassettes, total playing time, etc., of each type of unit (300a NR)",
+          "title": "Extent"
+        },
+        "otherPhysDetails": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Other physical details (300b NR)",
+          "title": "Otherphysdetails"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dimensions (300c NR)",
+          "title": "Dimensions"
+        }
+      },
+      "title": "Marc21MdPhysDescription",
+      "type": "object"
+    },
+    "Marc21MdPublicationNotice": {
+      "properties": {
+        "pnType": {
+          "default": "other",
+          "description": "Indicators 31 mark current, rest is others (simplification)",
+          "enum": [
+            "current",
+            "other"
+          ],
+          "title": "Pntype",
+          "type": "string"
+        },
+        "dating": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "OBV specific, marks specific publication history, only periodicals (2643 NR)",
+          "title": "Dating"
+        },
+        "places": {
+          "description": "Places of publication (264a R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Places",
+          "type": "array"
+        },
+        "names": {
+          "description": "Names of publishers (264b R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Names",
+          "type": "array"
+        },
+        "dates": {
+          "description": "Dates of publication (264c R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Dates",
+          "type": "array"
+        }
+      },
+      "title": "Marc21MdPublicationNotice",
+      "type": "object"
+    },
+    "Marc21MdTitle": {
+      "properties": {
+        "titleMain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Title (245a NR)",
+          "title": "Titlemain"
+        },
+        "titleRemainder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Remainder of title (245b NR)",
+          "title": "Titleremainder"
+        },
+        "titlePartNumber": {
+          "description": "Number of part/section of a work (245n R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Titlepartnumber",
+          "type": "array"
+        },
+        "titlePartName": {
+          "description": "Name of part/section of a work (245p R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Titlepartname",
+          "type": "array"
+        }
+      },
+      "required": [
+        "titleMain"
+      ],
+      "title": "Marc21MdTitle",
+      "type": "object"
+    },
+    "OenbResponse": {
+      "description": "The explicit footprint for the Austrian National Library.",
+      "properties": {
+        "identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "System identifier (e.g., Barcode or Bib Identifier)",
+          "title": "Identifier"
+        },
+        "basicMarc21MD": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BasicMarc21MD"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Basic Marc21 metadata"
+        },
+        "additionalRecsSRU": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AdditionalRecsSRU"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Similar Records via SRU"
+        },
+        "gndInfoLobid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataLobidGND"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Lobid GND API"
+        },
+        "wikidataData": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataWikidata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Wikidata SPARQL"
+        },
+        "bookCover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BookCoverOpenLibrary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Book cover fetched via Open Library"
+        },
+        "bookDescription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DescriptionGoogleBooks"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Description fetched via GoogleBooks"
+        },
+        "iName": {
+          "const": "oenb",
+          "default": "oenb",
+          "title": "Iname",
+          "type": "string"
+        },
+        "identifierType": {
+          "anyOf": [
+            {
+              "enum": [
+                "barcode",
+                "ac"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type of input identifier used",
+          "title": "Identifiertype"
+        }
+      },
+      "title": "OenbResponse",
+      "type": "object"
+    },
+    "PersonLobidGND": {
+      "properties": {
+        "type": {
+          "description": "Information on type of GND record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Type",
+          "type": "array"
+        },
+        "preferredName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferredname"
+        },
+        "biographicalOrHistoricalInformation": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Biographicalorhistoricalinformation",
+          "type": "array"
+        },
+        "depiction": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depiction",
+          "type": "array"
+        },
+        "geographicAreaCode": {
+          "items": {
+            "$ref": "#/$defs/LobidGndGeographicAreaCode"
+          },
+          "title": "Geographicareacode",
+          "type": "array"
+        },
+        "sameAs": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSameAs"
+          },
+          "title": "Sameas",
+          "type": "array"
+        },
+        "homepage": {
+          "items": {
+            "$ref": "#/$defs/LobidGndHomepage"
+          },
+          "title": "Homepage",
+          "type": "array"
+        },
+        "gndSubjectCategory": {
+          "items": {
+            "$ref": "#/$defs/LobidGndSubjectCategory"
+          },
+          "title": "Gndsubjectcategory",
+          "type": "array"
+        },
+        "gndType": {
+          "const": "person",
+          "default": "person",
+          "title": "Gndtype",
+          "type": "string"
+        },
+        "professionOrOccupation": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Professionoroccupation",
+          "type": "array"
+        },
+        "placeOfBirth": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Placeofbirth",
+          "type": "array"
+        },
+        "placeOfDeath": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Placeofdeath",
+          "type": "array"
+        },
+        "dateOfBirth": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dateofbirth",
+          "type": "array"
+        },
+        "dateOfDeath": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dateofdeath",
+          "type": "array"
+        },
+        "publication": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Publication",
+          "type": "array"
+        },
+        "affiliation": {
+          "items": {
+            "$ref": "#/$defs/LobidGndAffiliation"
+          },
+          "title": "Affiliation",
+          "type": "array"
+        }
+      },
+      "title": "PersonLobidGND",
+      "type": "object"
+    },
+    "WikidataConferenceEvent": {
+      "properties": {
+        "P31": {
+          "description": "Instance of (P31)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P31",
+          "type": "array"
+        },
+        "P18": {
+          "description": "Image (P18)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P18",
+          "type": "array"
+        },
+        "wikidataType": {
+          "const": "conferenceOrEvent",
+          "default": "conferenceOrEvent",
+          "title": "Wikidatatype",
+          "type": "string"
+        },
+        "P1476": {
+          "description": "P1476",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1476",
+          "type": "array"
+        },
+        "P1813": {
+          "description": "P1813",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1813",
+          "type": "array"
+        },
+        "P17": {
+          "description": "P17",
+          "items": {
+            "type": "string"
+          },
+          "title": "P17",
+          "type": "array"
+        },
+        "P276": {
+          "description": "P276",
+          "items": {
+            "type": "string"
+          },
+          "title": "P276",
+          "type": "array"
+        },
+        "P179": {
+          "description": "P179",
+          "items": {
+            "type": "string"
+          },
+          "title": "P179",
+          "type": "array"
+        },
+        "P527": {
+          "description": "P527",
+          "items": {
+            "type": "string"
+          },
+          "title": "P527",
+          "type": "array"
+        },
+        "P921": {
+          "description": "P921",
+          "items": {
+            "type": "string"
+          },
+          "title": "P921",
+          "type": "array"
+        },
+        "P2936": {
+          "description": "P2936",
+          "items": {
+            "type": "string"
+          },
+          "title": "P2936",
+          "type": "array"
+        },
+        "P580": {
+          "description": "P580",
+          "items": {
+            "type": "string"
+          },
+          "title": "P580",
+          "type": "array"
+        },
+        "P585": {
+          "description": "P585",
+          "items": {
+            "type": "string"
+          },
+          "title": "P585",
+          "type": "array"
+        },
+        "P664": {
+          "description": "P664",
+          "items": {
+            "type": "string"
+          },
+          "title": "P664",
+          "type": "array"
+        },
+        "P856": {
+          "description": "P856",
+          "items": {
+            "type": "string"
+          },
+          "title": "P856",
+          "type": "array"
+        }
+      },
+      "title": "WikidataConferenceEvent",
+      "type": "object"
+    },
+    "WikidataCorporate": {
+      "properties": {
+        "P31": {
+          "description": "Instance of (P31)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P31",
+          "type": "array"
+        },
+        "P18": {
+          "description": "Image (P18)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P18",
+          "type": "array"
+        },
+        "wikidataType": {
+          "const": "corporate",
+          "default": "corporate",
+          "title": "Wikidatatype",
+          "type": "string"
+        },
+        "P452": {
+          "description": "P452",
+          "items": {
+            "type": "string"
+          },
+          "title": "P452",
+          "type": "array"
+        },
+        "P571": {
+          "description": "P571",
+          "items": {
+            "type": "string"
+          },
+          "title": "P571",
+          "type": "array"
+        },
+        "P1705": {
+          "description": "P1705",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1705",
+          "type": "array"
+        },
+        "P1416": {
+          "description": "P1416",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1416",
+          "type": "array"
+        },
+        "P1448": {
+          "description": "P1448",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1448",
+          "type": "array"
+        },
+        "P101": {
+          "description": "P101",
+          "items": {
+            "type": "string"
+          },
+          "title": "P101",
+          "type": "array"
+        },
+        "P112": {
+          "description": "P112",
+          "items": {
+            "type": "string"
+          },
+          "title": "P112",
+          "type": "array"
+        },
+        "P17": {
+          "description": "P17",
+          "items": {
+            "type": "string"
+          },
+          "title": "P17",
+          "type": "array"
+        },
+        "P276": {
+          "description": "P276",
+          "items": {
+            "type": "string"
+          },
+          "title": "P276",
+          "type": "array"
+        },
+        "P1454": {
+          "description": "P1454",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1454",
+          "type": "array"
+        },
+        "P856": {
+          "description": "P856",
+          "items": {
+            "type": "string"
+          },
+          "title": "P856",
+          "type": "array"
+        }
+      },
+      "title": "WikidataCorporate",
+      "type": "object"
+    },
+    "WikidataPerson": {
+      "properties": {
+        "P31": {
+          "description": "Instance of (P31)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P31",
+          "type": "array"
+        },
+        "P18": {
+          "description": "Image (P18)",
+          "items": {
+            "type": "string"
+          },
+          "title": "P18",
+          "type": "array"
+        },
+        "wikidataType": {
+          "const": "person",
+          "default": "person",
+          "title": "Wikidatatype",
+          "type": "string"
+        },
+        "P27": {
+          "description": "P27",
+          "items": {
+            "type": "string"
+          },
+          "title": "P27",
+          "type": "array"
+        },
+        "P106": {
+          "description": "P106",
+          "items": {
+            "type": "string"
+          },
+          "title": "P106",
+          "type": "array"
+        },
+        "P101": {
+          "description": "P101",
+          "items": {
+            "type": "string"
+          },
+          "title": "P101",
+          "type": "array"
+        },
+        "P108": {
+          "description": "P108",
+          "items": {
+            "type": "string"
+          },
+          "title": "P108",
+          "type": "array"
+        },
+        "P69": {
+          "description": "P69",
+          "items": {
+            "type": "string"
+          },
+          "title": "P69",
+          "type": "array"
+        },
+        "P1344": {
+          "description": "P1344",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1344",
+          "type": "array"
+        },
+        "P551": {
+          "description": "P551",
+          "items": {
+            "type": "string"
+          },
+          "title": "P551",
+          "type": "array"
+        },
+        "P800": {
+          "description": "P800",
+          "items": {
+            "type": "string"
+          },
+          "title": "P800",
+          "type": "array"
+        },
+        "P463": {
+          "description": "P463",
+          "items": {
+            "type": "string"
+          },
+          "title": "P463",
+          "type": "array"
+        },
+        "P973": {
+          "description": "P973",
+          "items": {
+            "type": "string"
+          },
+          "title": "P973",
+          "type": "array"
+        },
+        "P135": {
+          "description": "P135",
+          "items": {
+            "type": "string"
+          },
+          "title": "P135",
+          "type": "array"
+        },
+        "P737": {
+          "description": "P737",
+          "items": {
+            "type": "string"
+          },
+          "title": "P737",
+          "type": "array"
+        },
+        "P2348": {
+          "description": "P2348",
+          "items": {
+            "type": "string"
+          },
+          "title": "P2348",
+          "type": "array"
+        },
+        "P1343": {
+          "description": "P1343",
+          "items": {
+            "type": "string"
+          },
+          "title": "P1343",
+          "type": "array"
+        }
+      },
+      "title": "WikidataPerson",
+      "type": "object"
+    }
+  },
+  "description": "The master response returned by API.",
+  "properties": {
+    "response": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/BibliographicLibraryResponse"
+        },
+        {
+          "$ref": "#/$defs/ArchivalResponse"
+        }
+      ],
+      "title": "Response"
+    }
+  },
+  "required": [
+    "response"
+  ],
+  "title": "RootApiResponse",
+  "type": "object"
+}

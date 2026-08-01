@@ -1,0 +1,187 @@
+{
+  "$defs": {
+    "LibraryCategory": {
+      "properties": {
+        "iType": {
+          "const": "bib",
+          "default": "bib",
+          "title": "Itype",
+          "type": "string"
+        },
+        "institution": {
+          "discriminator": {
+            "mapping": {
+              "oenb": "#/$defs/OeNBRequestData"
+            },
+            "propertyName": "iName"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OeNBRequestData"
+            }
+          ],
+          "title": "Institution"
+        }
+      },
+      "required": [
+        "institution"
+      ],
+      "title": "LibraryCategory",
+      "type": "object"
+    },
+    "OeNBRequestData": {
+      "properties": {
+        "iName": {
+          "const": "oenb",
+          "default": "oenb",
+          "title": "Iname",
+          "type": "string"
+        },
+        "identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The primary search term (Barcode or AC-Number)",
+          "title": "Identifier"
+        },
+        "identifierType": {
+          "anyOf": [
+            {
+              "enum": [
+                "barcode",
+                "ac"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicitly state of what type the identifier is",
+          "title": "Identifiertype"
+        },
+        "gndId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Direct GND ID bypass if known",
+          "title": "Gndid"
+        },
+        "wikidataId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Direct Wikidata ID bypass if known",
+          "title": "Wikidataid"
+        },
+        "isbn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Direct ISBN ID bypass if known",
+          "title": "Isbn"
+        },
+        "fetchMarc21MD": {
+          "default": true,
+          "description": "Fetch core MARC21 record via SRU",
+          "title": "Fetchmarc21Md",
+          "type": "boolean"
+        },
+        "fetchSimilarSRU": {
+          "default": false,
+          "description": "Fetch similar records via subsidiary SRU queries",
+          "title": "Fetchsimilarsru",
+          "type": "boolean"
+        },
+        "fetchLobidGND": {
+          "default": true,
+          "description": "Enrich via Lobid GND API",
+          "title": "Fetchlobidgnd",
+          "type": "boolean"
+        },
+        "fetchWikidata": {
+          "default": true,
+          "description": "Enrich via Wikidata SPARQL",
+          "title": "Fetchwikidata",
+          "type": "boolean"
+        },
+        "fetchCover": {
+          "default": true,
+          "description": "Fetch Open Library Book Cover",
+          "title": "Fetchcover",
+          "type": "boolean"
+        },
+        "fetchDescription": {
+          "default": true,
+          "description": "Fetch Google Books Description",
+          "title": "Fetchdescription",
+          "type": "boolean"
+        },
+        "fetchSimilarByAuthor": {
+          "default": false,
+          "description": "Fetch subsidiary records by the author's name",
+          "title": "Fetchsimilarbyauthor",
+          "type": "boolean"
+        },
+        "fetchSimilarBySubject": {
+          "default": false,
+          "description": "Fetch subsidiary records by subject headings",
+          "title": "Fetchsimilarbysubject",
+          "type": "boolean"
+        },
+        "fetchSimilarByClassification": {
+          "default": false,
+          "description": "Fetch subsidiary records by classification numbers",
+          "title": "Fetchsimilarbyclassification",
+          "type": "boolean"
+        },
+        "maxRecs": {
+          "default": 5,
+          "description": "Maximum number of additional records to return per strategy",
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Maxrecs",
+          "type": "integer"
+        }
+      },
+      "title": "OeNBRequestData",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "bib": "#/$defs/LibraryCategory"
+    },
+    "propertyName": "iType"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/LibraryCategory"
+    }
+  ]
+}
