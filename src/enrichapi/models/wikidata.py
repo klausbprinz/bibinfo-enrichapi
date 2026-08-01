@@ -1,18 +1,42 @@
 from typing import Literal, Union, Annotated, Any
-from pydantic import BaseModel, Field, Discriminator, Tag, ConfigDict
+from pydantic import (
+    BaseModel,
+    Field,
+    Discriminator,
+    Tag,
+    ConfigDict,
+    field_validator,
+)
 
 
 class WikidataBaseInfo(BaseModel):
-
-    # all inheriting models get the config
     model_config = ConfigDict(populate_by_name=True)
 
     instanceOf: list[str] = Field(default_factory=list, alias="P31", description="Instance of (P31)")
     image: list[str] = Field(default_factory=list, alias="P18", description="Image (P18)")
 
+    @field_validator("*", mode="before")
+    @classmethod
+    def ensureStringList(cls, rawVal: Any, info) -> Any:
+        # pass scalar discriminator field straight through
+        if info.field_name == "wikidataType":
+            return rawVal
+
+        if rawVal is None:
+            return []
+        if isinstance(rawVal, list):
+            return [
+                item.get("value") or item.get("label") if isinstance(item, dict) else str(item)
+                for item in rawVal
+                if item is not None
+            ]
+        if isinstance(rawVal, dict):
+            val = rawVal.get("value") or rawVal.get("label") or str(rawVal)
+            return [val]
+        return [str(rawVal)]
+
 
 class WikidataPerson(WikidataBaseInfo):
-
     wikidataType: Literal["person"] = "person"
 
     countryOfCitizenship: list[str] = Field(default_factory=list, alias="P27", description="P27")
@@ -32,7 +56,6 @@ class WikidataPerson(WikidataBaseInfo):
 
 
 class WikidataCorporate(WikidataBaseInfo):
-
     wikidataType: Literal["corporate"] = "corporate"
 
     industry: list[str] = Field(default_factory=list, alias="P452", description="P452")
@@ -49,7 +72,6 @@ class WikidataCorporate(WikidataBaseInfo):
 
 
 class WikidataConferenceEvent(WikidataBaseInfo):
-
     wikidataType: Literal["conferenceOrEvent"] = "conferenceOrEvent"
 
     title: list[str] = Field(default_factory=list, alias="P1476", description="P1476")
@@ -66,39 +88,65 @@ class WikidataConferenceEvent(WikidataBaseInfo):
     officialWebsite: list[str] = Field(default_factory=list, alias="P856", description="P856")
 
 
-# catch-all fallback model for unexpected Wikidata entity categories
+# slim fallback model
 class DefaultWikidata(WikidataBaseInfo):
-    
-    wikidataType: str = Field(description="Fallback for unmapped Wikidata types")
+    wikidataType: Literal["default"] = "default"
 
 
 def resolveWikidataType(v: Any) -> str:
+    """
+    Discriminator reading explicit entity type passed down from MARC21 nameType.
+    Falls back to checking P31 (instanceOf) or 'default' if omitted.
+    """
+    targetType = None
 
-    # handle Pydantic model instance as well as dict
     if isinstance(v, BaseModel):
-        entityType = getattr(v, "entityType", None) # or whichever field stores the type string
+        targetType = getattr(v, "wikidataType", None)
     elif isinstance(v, dict):
-        entityType = v.get("entityType")
-    else:
-        entityType = None
+        targetType = v.get("wikidataType") or v.get("entityType")
 
-    if entityType in ("Person", "Work", "Place", "Organization"): # adjust list to match your tags
-        return entityType
+    # primary route: explicit type passed from MARC21 nameType
+    if targetType in ("person", "corporate", "conferenceOrEvent"):
+        return targetType
+
+    # fallback route: inspect P31 if no explicit type provided
+    p31List = []
+    if isinstance(v, BaseModel):
+        p31List = getattr(v, "instanceOf", []) or getattr(v, "P31", [])
+    elif isinstance(v, dict):
+        p31List = v.get("P31", []) or v.get("instanceOf", [])
+
+    if isinstance(p31List, str):
+        p31List = [p31List]
+
+    p31Set = {str(item).lower().strip() for item in p31List}
+
+    personMarkers = {"q5", "mensch", "human"}
+    corporateMarkers = {
+        "q43229", "organisation", "organization", "unternehmen", 
+        "business", "bibliothek", "library", "hochschule", "university"
+    }
+    eventMarkers = {"q1656682", "ereignis", "event", "konferenz", "conference"}
+
+    if p31Set.intersection(personMarkers):
+        return "person"
+    if p31Set.intersection(corporateMarkers):
+        return "corporate"
+    if p31Set.intersection(eventMarkers):
+        return "conferenceOrEvent"
 
     return "default"
 
 
 class DataWikidata(BaseModel):
+    wikidataId: str = Field(description="Wikidata Q-ID used for enrichment")
 
-    wikidataId: str = Field(description="Wikidata ID to use for enrichment")
-    otherIds: list[str] = Field(default_factory=list, description="Other IDs to try with SPARQL")
-    
     wikidataInformation: Annotated[
         Union[
             Annotated[WikidataPerson, Tag("person")],
             Annotated[WikidataCorporate, Tag("corporate")],
             Annotated[WikidataConferenceEvent, Tag("conferenceOrEvent")],
-            Annotated[DefaultWikidata, Tag("default")]
+            Annotated[DefaultWikidata, Tag("default")],
         ],
-        Discriminator(resolveWikidataType)
-    ] = Field(description="Use SPARQL with Wikidata endpoint with safety fallback routing")
+        Discriminator(resolveWikidataType),
+    ] = Field(description="Structured Wikidata information parsed dynamically")

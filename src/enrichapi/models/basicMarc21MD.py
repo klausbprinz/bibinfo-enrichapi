@@ -11,14 +11,14 @@ class Marc21MdTitle(BaseModel):
 class Marc21MdMainEntry(BaseModel):
 
     name: str | None = Field(default=None, description="Name (100/110/111a NR)")
-    nameType: Literal["personal", "corporate", "meeting"] | None = Field(default=None, description="Type of name in main entry")
+    nameType: Literal["person", "corporate", "conferenceOrEvent"] | None = Field(default=None, description="Type of name in main entry")
     relator: list[str] = Field(default_factory=list, description="Codes for relationship between a name and a work (100/110/1114 R)")
     gndIdentifier: str | None = Field(default=None, description="GND-ID (100/110/1110 NR)")
 
 class Marc21MdAddedEntry(BaseModel):
 
     name: str | None = Field(default=None, description="Name (700/710/711a NR)")
-    nameType: Literal["personal", "corporate", "meeting"] | None = Field(default=None, description="Type of name in added entry")
+    nameType: Literal["person", "corporate", "conferenceOrEvent"] | None = Field(default=None, description="Type of name in added entry")
     relator: list[str] = Field(default_factory=list, description="Codes for relationship between a name and a work (700/710/7114 R)")
     gndIdentifier: str | None = Field(default=None, description="GND-ID (700/710/7110 NR)")
 

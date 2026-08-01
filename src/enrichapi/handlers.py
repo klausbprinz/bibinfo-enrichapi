@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from httpx import AsyncClient
 from .models.request import OeNBRequestData
 from .models.response import OenbResponse
@@ -8,6 +9,7 @@ from .services.sruService import SruService
 from .services.lobidService import LobidService
 from .services.wikidataService import WikidataService
 
+logger = logging.getLogger(__name__)
 
 async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
     
@@ -23,14 +25,22 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
         
         marcData = None
 
-        # gather core identifiers sequentially
+        # fetch core MARC21 record sequentially if requested
         if data.fetchMarc21MD:
-            marcXml = await sruService.fetchRecord(data.identifier, data.identifierType)
-            if marcXml is not None:
-                marcData = sruService.extractMarc21Metadata(marcXml)
-                
-                if not extractedGnd and marcData.mainEntry:
-                    extractedGnd = marcData.mainEntry.gndIdentifier
+            try:
+                marcXml = await sruService.fetchRecord(data.identifier, data.identifierType)
+                if marcXml is not None:
+                    marcData = sruService.extractMarc21Metadata(marcXml)
+                    
+                    # extract GND ID from mainEntry if not explicitly provided in request
+                    if not extractedGnd and marcData and marcData.mainEntry:
+                        extractedGnd = marcData.mainEntry.gndIdentifier
+
+            except Exception as e:
+                logger.error(f"Error processing SRU MARC21 record: {e}")
+
+        # extract nameType from mainEntry (person, corporate, conferenceOrEvent)
+        nameType = marcData.mainEntry.nameType if (marcData and marcData.mainEntry) else None
 
 
         # spin up all background tasks in parallel
@@ -47,7 +57,13 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             taskMappings["lobid"] = len(tasks) - 1
             
         if data.fetchWikidata and (extractedWikidata or extractedGnd):
-            tasks.append(wikidataService.fetchWikidata(extractedWikidata, extractedGnd))
+            tasks.append(
+                wikidataService.fetchWikidata(
+                    wikidataId=extractedWikidata,
+                    gndId=extractedGnd,
+                    nameType=nameType,
+                )
+            )
             taskMappings["wikidata"] = len(tasks) - 1
 
         # fire concurrent requests simultaneously

@@ -93,7 +93,7 @@ class SruService:
 
         # extract main entry (100 / 110 / 111)
         mainEntryModel = None
-        for tag, nameType in [("100", "personal"), ("110", "corporate"), ("111", "meeting")]:
+        for tag, nameType in [("100", "person"), ("110", "corporate"), ("111", "conferenceOrEvent")]:
             field = marcRecord.find(f'marc:datafield[@tag="{tag}"]', namespaces=self.ns)
             if field is not None:
                 data = parse.extractEntryData(field)
@@ -103,7 +103,7 @@ class SruService:
 
         # extract added entries (700 / 710 / 711)
         addedEntriesModels: list[Marc21MdAddedEntry] = []
-        tagMap = {"700": "personal", "710": "corporate", "711": "meeting"}
+        tagMap = {"700": "person", "710": "corporate", "711": "conferenceOrEvent"}
         
         df7xxList = marcRecord.xpath(
             'marc:datafield[@tag="700" or @tag="710" or @tag="711"]',

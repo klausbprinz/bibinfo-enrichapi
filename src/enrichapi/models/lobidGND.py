@@ -1,7 +1,8 @@
 # with lobid/json -> pydantic can do the heavy lifting
 
 from typing import Literal, Union, Annotated, Any
-from pydantic import BaseModel, Field, Discriminator, Tag, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, Field, Discriminator, Tag 
+from pydantic import ConfigDict, field_validator, model_validator, computed_field
 
 
 class LobidGndSameAs(BaseModel):
@@ -135,6 +136,25 @@ class BaseLobidGND(BaseModel):
     gndSubjectCategories: list[LobidGndSubjectCategory] = Field(
         default_factory=list, alias="gndSubjectCategory"
     )
+
+    # directly extract Q-ID from sameAs list
+    @computed_field
+    @property
+    def wikidataId(self) -> str | None:
+        """
+        Inspects sameAs items for collectionName=='Wikidata' or wikidata.org URL 
+        and returns the plain Q-ID (e.g. 'Q9312').
+        """
+        for item in self.sameAs:
+            # match explicitly by collection name or URL pattern
+            isWikidata = (
+                item.collectionName == "Wikidata" 
+                or (item.idURL and "wikidata.org/entity/" in item.idURL)
+            )
+            if isWikidata and item.idURL:
+                # extract trailing Q-ID from URL (e.g. 'http://www.wikidata.org/entity/Q9312' -> 'Q9312')
+                return item.idURL.rstrip("/").rsplit("/", 1)[-1]
+        return None
 
 
 class PersonLobidGND(BaseLobidGND):
