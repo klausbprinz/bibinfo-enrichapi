@@ -1,6 +1,7 @@
 import logging
+import time
 from typing import Any
-from httpx import AsyncClient, HTTPError
+from httpx import AsyncClient, HTTPError, TimeoutException
 from ..models.wikidata import DataWikidata
 
 logger = logging.getLogger(__name__)
@@ -28,11 +29,21 @@ class WikidataService:
         Fetches Wikidata entity claims using either a direct Q-ID or a GND ID lookup.
         """
         if not wikidataId and not gndId:
-            logger.warning("Neither wikidataId nor gndId was provided to WikidataService.")
+            logger.warning("[Wikidata] Neither wikidataId nor gndId was provided to WikidataService.")
             return None
 
+        cleanQid = wikidataId.strip() if wikidataId else None
+        cleanGnd = gndId.strip() if gndId else None
+
+        logger.info(
+            f"[Wikidata] Initiating entity fetch | qid='{cleanQid}' gndId='{cleanGnd}' nameType='{nameType}'"
+        )
+
         # build SPARQL query
-        query = self._buildSparqlQuery(wikidataId, gndId)
+        query = self._buildSparqlQuery(cleanQid, cleanGnd)
+        logger.debug(f"[Wikidata] Constructed SPARQL Query:\n{query}")
+
+        startTime = time.perf_counter()
 
         try:
             response = await self.client.get(
@@ -41,40 +52,61 @@ class WikidataService:
                 headers=HEADERS,
                 timeout=10.0,
             )
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             response.raise_for_status()
+            logger.debug(f"[Wikidata] HTTP {response.status_code} received from SPARQL endpoint ({elapsedMs}ms)")
+            
             sparqlData = response.json()
 
-        # except Exception as e:
-        #     # exc_info=True prints the complete Python traceback
-        #     logger.error(f"Failed to query Wikidata SPARQL endpoint for GND {gndId}: {e}", exc_info=True)
-        #     raise e
-
+        except TimeoutException:
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            logger.error(f"[Wikidata] Timeout after {elapsedMs}ms querying SPARQL endpoint for Q-ID='{cleanQid}' / GND='{cleanGnd}'")
+            return None
         except HTTPError as e:
-            logger.error(f"Failed to query Wikidata SPARQL endpoint: {e}")
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            status = e.response.status_code if hasattr(e, "response") and e.response is not None else "N/A"
+            logger.error(
+                f"[Wikidata] Failed to query Wikidata SPARQL endpoint (HTTP {status}) "
+                f"for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms): {e}",
+                exc_info=True
+            )
             return None
         except Exception as e:
-            logger.error(f"Unexpected error parsing Wikidata SPARQL response: {e}")
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            logger.error(
+                f"[Wikidata] Unexpected error parsing Wikidata SPARQL response "
+                f"for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms): {e}",
+                exc_info=True
+            )
             return None
 
         bindings = sparqlData.get("results", {}).get("bindings", [])
         if not bindings:
-            logger.info(f"No Wikidata entry found for Q-ID='{wikidataId}' / GND='{gndId}'")
+            logger.info(f"[Wikidata] No Wikidata bindings/entry found for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms)")
             return None
+
+        logger.debug(f"[Wikidata] Received {len(bindings)} SPARQL binding row(s) from endpoint ({elapsedMs}ms)")
 
         # extract resolved Q-ID and group properties into lists
         resolvedQid, rawClaims = self._parseSparqlBindings(bindings)
+        logger.info(
+            f"[Wikidata] Resolved entity Q-ID='{resolvedQid}' with {len(rawClaims)} property claim category/categories"
+        )
 
         # inject MARC21 nameType if present so resolveWikidataType routes directly
         if nameType:
             rawClaims["wikidataType"] = nameType
+            logger.debug(f"[Wikidata] Injected explicit MARC21 nameType '{nameType}' into claims map")
 
         try:
-            return DataWikidata(
+            validatedModel = DataWikidata(
                 wikidataId=resolvedQid,
                 wikidataInformation=rawClaims,
             )
+            logger.info(f"[Wikidata] Successfully validated DataWikidata model for Q-ID='{resolvedQid}' ({elapsedMs}ms)")
+            return validatedModel
         except Exception as e:
-            logger.error(f"Pydantic validation error constructing DataWikidata: {e}")
+            logger.error(f"[Wikidata] Pydantic validation error constructing DataWikidata for Q-ID='{resolvedQid}': {e}", exc_info=True)
             return None
 
     def _buildSparqlQuery(self, wikidataId: str | None, gndId: str | None) -> str:
