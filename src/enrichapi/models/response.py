@@ -15,7 +15,9 @@ from .otherAPIs import BookCoverOpenLibrary, DescriptionGoogleBooks
 class BaseInstitutionResponse(BaseModel):
     """Common fields shared by any bibliographic source."""
 
-    identifier: str = Field(description="Mandatory system identifier (e.g., Barcode or Bib Identifier)")
+    identifier: str | None = Field(
+        default=None, description="System identifier (e.g., Barcode or Bib Identifier)"
+    )
     basicMarc21MD: BasicMarc21MD | None = Field(default=None, description="Basic Marc21 metadata")
     additionalRecsSRU: AdditionalRecsSRU | None = Field(default=None, description="Similar Records via SRU")
     gndInfoLobid: DataLobidGND | None = Field(default=None, description="Data fetched via Lobid GND API")
@@ -28,7 +30,9 @@ class OenbResponse(BaseInstitutionResponse):
     """The explicit footprint for the Austrian National Library."""
 
     iName: Literal["oenb"] = "oenb"
-    identifierType: Literal["barcode", "ac"] = Field(description="Type of input identifier used")
+    identifierType: Literal["barcode", "ac"] | None = Field(
+        default=None, description="Type of input identifier used"
+    )
 
 
 # future proofing: adding another library network should be trivial

@@ -16,7 +16,11 @@ ENRICHMENT_STRATEGIES = {
 }
 
 
-@app.post("/enrich", response_model=RootApiResponse)    # using the nested master wrapper
+@app.post(
+    "/enrich", 
+    response_model=RootApiResponse, 
+    response_model_by_alias=False
+)    # using the nested master wrapper and ensure pydantic field names are used
 async def enrichData(request: EnrichmentRequest):
     if request.iType == "bib":
         instInput = request.institution

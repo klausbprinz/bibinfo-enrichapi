@@ -4,9 +4,13 @@ from pydantic import BaseModel, Field
 class OeNBRequestData(BaseModel):
     iName: Literal["oenb"] = "oenb"
     
-    # flexible main identifier
-    identifier: str = Field(description="The primary search term (Barcode or AC-Number)")
-    identifierType: Literal["barcode", "ac"] = Field(description="Explicitly state what the identifier is")
+    # flexible main identifier (optional for bypass queries)
+    identifier: str | None = Field(
+        default=None, description="The primary search term (Barcode or AC-Number)"
+    )
+    identifierType: Literal["barcode", "ac"] | None = Field(
+        default=None, description="Explicitly state of what type the identifier is"
+    )
     
     # optional direct bypass identifiers (if user already has them)
     gndId: str | None = Field(default=None, description="Direct GND ID bypass if known")

@@ -44,6 +44,11 @@ class WikidataService:
             response.raise_for_status()
             sparqlData = response.json()
 
+        # except Exception as e:
+        #     # exc_info=True prints the complete Python traceback
+        #     logger.error(f"Failed to query Wikidata SPARQL endpoint for GND {gndId}: {e}", exc_info=True)
+        #     raise e
+
         except HTTPError as e:
             logger.error(f"Failed to query Wikidata SPARQL endpoint: {e}")
             return None
