@@ -7,17 +7,29 @@ class OeNBRequestData(BaseModel):
     # flexible main identifier (optional for bypass queries)
     identifier: str | None = Field(
         default=None, description="The primary search term (Barcode or AC-Number)",
-        examples=["AC14474940"]
+        examples=["AC14474940", "+Z168276302"]
     )
     identifierType: Literal["barcode", "ac"] | None = Field(
         default=None, description="Explicitly state of what type the identifier is",
-        examples=["ac"]
+        examples=["ac", "barcode"]
     )
     
     # optional direct bypass identifiers (if user already has them)
-    gndId: str | None = Field(default=None, description="Direct GND ID bypass if known")
-    wikidataId: str | None = Field(default=None, description="Direct Wikidata ID bypass if known")
-    isbn: str | None = Field(default=None, description="Direct ISBN ID bypass if known")
+    gndId: str | None = Field(
+        default=None, 
+        description="Direct GND ID bypass if known",
+        examples=[None, "2024703-5"]
+    )
+    wikidataId: str | None = Field(
+        default=None, 
+        description="Direct Wikidata ID bypass if known",
+        examples=[None, "Q76518"]
+    )
+    isbn: str | None = Field(
+        default=None, 
+        description="Direct ISBN ID bypass if known",
+        examples=[None, "9781473224469"]
+    )
     
     # core features
     fetchMarc21MD: bool = Field(default=True, description="Fetch core MARC21 record via SRU")
