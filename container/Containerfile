@@ -1,27 +1,27 @@
 # container/Containerfile
 FROM python:3.11-slim
 
-# Prevent Python from writing .pyc files and enable unbuffered output for FastAPI logs
+# prevent Python from writing .pyc files and enable unbuffered output for FastAPI logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src
 
 WORKDIR /app
 
-# Install system dependencies (e.g. libxml2 for lxml if needed)
+# install system dependencies (e.g. libxml2 for lxml if needed)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy packaging config first to leverage build cache
+# copy packaging config first to leverage build cache
 COPY pyproject.toml README.md /app/
 COPY src/ /app/src/
 
-# Install the package in production mode
+# install the package in production mode
 RUN pip install --no-cache-dir .
 
-# Expose FastAPI default port
+# expose FastAPI default port
 EXPOSE 8000
 
-# Run FastAPI dev/prod server via uvicorn
+# run FastAPI dev/prod server via uvicorn
 CMD ["uvicorn", "enrichapi.main:app", "--host", "0.0.0.0", "--port", "8000"]
