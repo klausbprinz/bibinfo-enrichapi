@@ -86,7 +86,7 @@ bibinfo-enrichapi/
 │   └── schemas/                # Exported Pydantic JSON Schemas
 ├── notebooks/                  # Playground & pipeline exploration notebooks
 ├── scripts/                    # Automation scripts
-│   └── build_docs.py           # Combined JSON Schema & pdoc HTML build script
+│   └── buildDocs.py            # Combined JSON Schema & pdoc HTML build script
 ├── src/                        # Main application package source
 │   └── enrichapi/
 │       ├── models/             # Pydantic request & response models
@@ -115,7 +115,7 @@ Another (simpler) option is to lauch the development server, open `notebooks/tes
 ### Rebuilding Documentation & Schemas
 Regenerate both the JSON Schemas (`docs/schemas/`) and static HTML API documentation (`docs/api/`) in a single step:
 ```bash
-python scripts/build_docs.py
+python scripts/buildDocs.py
 ```
 ---
 
