@@ -19,13 +19,13 @@ class OeNBRequestData(BaseModel):
     
     # core features
     fetchMarc21MD: bool = Field(default=True, description="Fetch core MARC21 record via SRU")
-    fetchSimilarSRU: bool = Field(default=False, description="Fetch similar records via subsidiary SRU queries")
+    #fetchSimilarSRU: bool = Field(default=False, description="Fetch similar records via subsidiary SRU queries")
     fetchLobidGND: bool = Field(default=True, description="Enrich via Lobid GND API")
     fetchWikidata: bool = Field(default=True, description="Enrich via Wikidata SPARQL")
-    fetchCover: bool = Field(default=True, description="Fetch Open Library Book Cover")
-    fetchDescription: bool = Field(default=True, description="Fetch Google Books Description")
+    fetchCover: bool = Field(default=False, description="Fetch Open Library Book Cover")
+    fetchDescription: bool = Field(default=False, description="Fetch Google Books Description")
 
-    # granula sru similar recs features
+    # granular sru similar recs features
     fetchSimilarByAuthor: bool = Field(default=False, description="Fetch subsidiary records by the author's name")
     fetchSimilarBySubject: bool = Field(default=False, description="Fetch subsidiary records by subject headings")
     fetchSimilarByClassification: bool = Field(default=False, description="Fetch subsidiary records by classification numbers")

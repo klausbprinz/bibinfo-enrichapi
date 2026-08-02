@@ -12,14 +12,17 @@ from pydantic import (
 class WikidataBaseInfo(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    label: str | None = Field(default=None, description="Primary entity label/name")
     instanceOf: list[str] = Field(default_factory=list, alias="P31", description="Instance of (P31)")
     image: list[str] = Field(default_factory=list, alias="P18", description="Image (P18)")
 
     @field_validator("*", mode="before")
     @classmethod
     def ensureStringList(cls, rawVal: Any, info) -> Any:
-        # pass scalar discriminator field straight through
-        if info.field_name == "wikidataType":
+        # pass non-list scalar fields straight through after unpacking lists
+        if info.field_name in ("wikidataType", "label"):
+            if isinstance(rawVal, list):
+                return rawVal[0] if rawVal else None
             return rawVal
 
         if rawVal is None:
@@ -34,7 +37,7 @@ class WikidataBaseInfo(BaseModel):
             val = rawVal.get("value") or rawVal.get("label") or str(rawVal)
             return [val]
         return [str(rawVal)]
-
+    
 
 class WikidataPerson(WikidataBaseInfo):
     wikidataType: Literal["person"] = "person"

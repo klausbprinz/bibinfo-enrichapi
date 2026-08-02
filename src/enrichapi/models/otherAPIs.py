@@ -10,8 +10,7 @@ class BookCoverOpenLibrary(BaseModel):
 
     @model_validator(mode="after")
 
-    def computeCoverUrl(self) -> "BookCoverOpenLibrary":        # string literal type hint/forward reference
-        
+    def computeCoverUrl(self) -> "BookCoverOpenLibrary":        # string literal type hint/forward reference     
         # if isbn is provided but coverURL hasn't been set yet, calculate it dynamically
         if self.isbn and not self.coverURL:
             

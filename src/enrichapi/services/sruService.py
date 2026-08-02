@@ -4,7 +4,7 @@ import time
 import httpx
 
 from lxml import etree
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPError, TimeoutException
 from urllib.parse import quote
 from typing import Any
 
@@ -250,7 +250,7 @@ class SruService:
         # subject headings search
         if data.fetchSimilarBySubject:
             if marcData.subjectHeadings:
-                queryStr = " AND ".join([f'alma.subject="{s}"' for s in marcData.subjectHeadings])
+                queryStr = " AND ".join([f'alma.subjects="{s}"' for s in marcData.subjectHeadings])
                 logger.info(f"[SRU] Queuing subsidiary subject search with {len(marcData.subjectHeadings)} terms")
                 tasks.append(
                     self._executeSubsidiarySRU(
@@ -395,7 +395,8 @@ class SruService:
 
         startTime = time.perf_counter()
         try:
-            res = await self.client.get(self.baseUrl, params=params)
+            # set explicit request-level timeout (e.g. 8.0s) to prevent broad SRU queries from hanging
+            res = await self.client.get(self.baseUrl, params=params, timeout=8.0)
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             res.raise_for_status()
 
@@ -420,6 +421,22 @@ class SruService:
             
             # guardrail 2: enforce strict maxRecs upper limit regardless of whether 0 or 1 item was filtered
             return finalBatch
+
+        except TimeoutException as e:
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            logger.warning(
+                f"[SRU] Subsidiary query timed out after {elapsedMs}ms for query='{queryString}'"
+            )
+            # re-raise so asyncio.gather(return_exceptions=True) captures the failure cleanly
+            raise e
+
+        except HTTPError as e:
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            status = e.response.status_code if hasattr(e, "response") and e.response is not None else "N/A"
+            logger.error(
+                f"[SRU] Subsidiary query HTTP error (HTTP {status}) after {elapsedMs}ms for query='{queryString}': {e}"
+            )
+            raise e
 
         except Exception as e:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
