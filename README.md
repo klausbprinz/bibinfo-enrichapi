@@ -4,7 +4,7 @@ author: "Klaus Prinz"
 domain: "software"
 status: "active"
 createdDate: "2026-06-03"
-tags: [fastapi, pydantic, lxml, marcxml, json, json schema, swagger, sparql, httpx, async, asyncio, wikidata, containerfile, pdoc, unit test, pytest]
+tags: [fastapi, pydantic, lxml, marcxml, gnd, lobid, json, json schema, swagger, sparql, httpx, async, asyncio, wikidata, containerfile, pdoc, unit test, pytest]
 requester: "bibinfo"
 ticketId: ""
 ---
