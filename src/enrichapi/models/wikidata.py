@@ -13,8 +13,8 @@ class WikidataBaseInfo(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     label: str | None = Field(default=None, description="Primary entity label/name")
-    instanceOf: list[str] = Field(default_factory=list, alias="P31", description="Instance of (P31)")
-    image: list[str] = Field(default_factory=list, alias="P18", description="Image (P18)")
+    instanceOf: list[str] = Field(default_factory=list, validation_alias="P31", description="P31")
+    image: list[str] = Field(default_factory=list, validation_alias="P18", description="P18")
 
     @field_validator("*", mode="before")
     @classmethod
@@ -42,53 +42,53 @@ class WikidataBaseInfo(BaseModel):
 class WikidataPerson(WikidataBaseInfo):
     wikidataType: Literal["person"] = "person"
 
-    countryOfCitizenship: list[str] = Field(default_factory=list, alias="P27", description="P27")
-    occupation: list[str] = Field(default_factory=list, alias="P106", description="P106")
-    fieldOfWork: list[str] = Field(default_factory=list, alias="P101", description="P101")
-    employer: list[str] = Field(default_factory=list, alias="P108", description="P108")
-    educatedAt: list[str] = Field(default_factory=list, alias="P69", description="P69")
-    participantIn: list[str] = Field(default_factory=list, alias="P1344", description="P1344")
-    residence: list[str] = Field(default_factory=list, alias="P551", description="P551")
-    notableWork: list[str] = Field(default_factory=list, alias="P800", description="P800")
-    memberOf: list[str] = Field(default_factory=list, alias="P463", description="P463")
-    describedAtURL: list[str] = Field(default_factory=list, alias="P973", description="P973")
-    movement: list[str] = Field(default_factory=list, alias="P135", description="P135")
-    influencedBy: list[str] = Field(default_factory=list, alias="P737", description="P737")
-    timePeriod: list[str] = Field(default_factory=list, alias="P2348", description="P2348")
-    describedBySource: list[str] = Field(default_factory=list, alias="P1343", description="P1343")
+    countryOfCitizenship: list[str] = Field(default_factory=list, validation_alias="P27", description="P27")
+    occupation: list[str] = Field(default_factory=list, validation_alias="P106", description="P106")
+    fieldOfWork: list[str] = Field(default_factory=list, validation_alias="P101", description="P101")
+    employer: list[str] = Field(default_factory=list, validation_alias="P108", description="P108")
+    educatedAt: list[str] = Field(default_factory=list, validation_alias="P69", description="P69")
+    participantIn: list[str] = Field(default_factory=list, validation_alias="P1344", description="P1344")
+    residence: list[str] = Field(default_factory=list, validation_alias="P551", description="P551")
+    notableWork: list[str] = Field(default_factory=list, validation_alias="P800", description="P800")
+    memberOf: list[str] = Field(default_factory=list, validation_alias="P463", description="P463")
+    describedAtURL: list[str] = Field(default_factory=list, validation_alias="P973", description="P973")
+    movement: list[str] = Field(default_factory=list, validation_alias="P135", description="P135")
+    influencedBy: list[str] = Field(default_factory=list, validation_alias="P737", description="P737")
+    timePeriod: list[str] = Field(default_factory=list, validation_alias="P2348", description="P2348")
+    describedBySource: list[str] = Field(default_factory=list, validation_alias="P1343", description="P1343")
 
 
 class WikidataCorporate(WikidataBaseInfo):
     wikidataType: Literal["corporate"] = "corporate"
 
-    industry: list[str] = Field(default_factory=list, alias="P452", description="P452")
-    inception: list[str] = Field(default_factory=list, alias="P571", description="P571")
-    nativeLabel: list[str] = Field(default_factory=list, alias="P1705", description="P1705")
-    affiliation: list[str] = Field(default_factory=list, alias="P1416", description="P1416")
-    officialName: list[str] = Field(default_factory=list, alias="P1448", description="P1448")
-    fieldOfWork: list[str] = Field(default_factory=list, alias="P101", description="P101")
-    founder: list[str] = Field(default_factory=list, alias="P112", description="P112")
-    country: list[str] = Field(default_factory=list, alias="P17", description="P17")
-    location: list[str] = Field(default_factory=list, alias="P276", description="P276")
-    legalForm: list[str] = Field(default_factory=list, alias="P1454", description="P1454")
-    officialWebsite: list[str] = Field(default_factory=list, alias="P856", description="P856")
+    industry: list[str] = Field(default_factory=list, validation_alias="P452", description="P452")
+    inception: list[str] = Field(default_factory=list, validation_alias="P571", description="P571")
+    nativeLabel: list[str] = Field(default_factory=list, validation_alias="P1705", description="P1705")
+    affiliation: list[str] = Field(default_factory=list, validation_alias="P1416", description="P1416")
+    officialName: list[str] = Field(default_factory=list, validation_alias="P1448", description="P1448")
+    fieldOfWork: list[str] = Field(default_factory=list, validation_alias="P101", description="P101")
+    founder: list[str] = Field(default_factory=list, validation_alias="P112", description="P112")
+    country: list[str] = Field(default_factory=list, validation_alias="P17", description="P17")
+    location: list[str] = Field(default_factory=list, validation_alias="P276", description="P276")
+    legalForm: list[str] = Field(default_factory=list, validation_alias="P1454", description="P1454")
+    officialWebsite: list[str] = Field(default_factory=list, validation_alias="P856", description="P856")
 
 
 class WikidataConferenceEvent(WikidataBaseInfo):
     wikidataType: Literal["conferenceOrEvent"] = "conferenceOrEvent"
 
-    title: list[str] = Field(default_factory=list, alias="P1476", description="P1476")
-    shortName: list[str] = Field(default_factory=list, alias="P1813", description="P1813")
-    country: list[str] = Field(default_factory=list, alias="P17", description="P17")
-    location: list[str] = Field(default_factory=list, alias="P276", description="P276")
-    partOfTheSeries: list[str] = Field(default_factory=list, alias="P179", description="P179")
-    hasParts: list[str] = Field(default_factory=list, alias="P527", description="P527")
-    mainSubject: list[str] = Field(default_factory=list, alias="P921", description="P921")
-    languageUsed: list[str] = Field(default_factory=list, alias="P2936", description="P2936")
-    startTime: list[str] = Field(default_factory=list, alias="P580", description="P580")
-    endTime: list[str] = Field(default_factory=list, alias="P585", description="P585")
-    organizer: list[str] = Field(default_factory=list, alias="P664", description="P664")
-    officialWebsite: list[str] = Field(default_factory=list, alias="P856", description="P856")
+    title: list[str] = Field(default_factory=list, validation_alias="P1476", description="P1476")
+    shortName: list[str] = Field(default_factory=list, validation_alias="P1813", description="P1813")
+    country: list[str] = Field(default_factory=list, validation_alias="P17", description="P17")
+    location: list[str] = Field(default_factory=list, validation_alias="P276", description="P276")
+    partOfTheSeries: list[str] = Field(default_factory=list, validation_alias="P179", description="P179")
+    hasParts: list[str] = Field(default_factory=list, validation_alias="P527", description="P527")
+    mainSubject: list[str] = Field(default_factory=list, validation_alias="P921", description="P921")
+    languageUsed: list[str] = Field(default_factory=list, validation_alias="P2936", description="P2936")
+    startTime: list[str] = Field(default_factory=list, validation_alias="P580", description="P580")
+    endTime: list[str] = Field(default_factory=list, validation_alias="P585", description="P585")
+    organizer: list[str] = Field(default_factory=list, validation_alias="P664", description="P664")
+    officialWebsite: list[str] = Field(default_factory=list, validation_alias="P856", description="P856")
 
 
 # slim fallback model
