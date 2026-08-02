@@ -109,8 +109,9 @@ class WikidataService:
             logger.error(f"[Wikidata] Pydantic validation error constructing DataWikidata for Q-ID='{resolvedQid}': {e}", exc_info=True)
             return None
 
+
     def _buildSparqlQuery(self, wikidataId: str | None, gndId: str | None) -> str:
-        """Constructs a targeted SPARQL SELECT query."""
+        """Constructs a targeted SPARQL SELECT query with clean label extraction."""
         if wikidataId:
             qidURI = f"wd:{wikidataId}" if not wikidataId.startswith("http") else f"<{wikidataId}>"
             subjectClause = f"BIND({qidURI} AS ?item)"
@@ -118,8 +119,14 @@ class WikidataService:
             subjectClause = f'?item wdt:P227 "{gndId}" .'
 
         return f"""
-        SELECT ?item ?property ?value WHERE {{
+        SELECT ?item ?itemLabel ?property ?value WHERE {{
           {subjectClause}
+          
+          # Explicitly grab DE label, fallback to EN label (no row multiplication)
+          OPTIONAL {{ ?item rdfs:label ?labelDe . FILTER(LANG(?labelDe) = "de") }}
+          OPTIONAL {{ ?item rdfs:label ?labelEn . FILTER(LANG(?labelEn) = "en") }}
+          BIND(COALESCE(?labelDe, ?labelEn, "") AS ?itemLabel)
+
           ?item ?p ?statement .
           ?statement ?ps ?rawVal .
           
@@ -134,9 +141,10 @@ class WikidataService:
         }}
         """
 
-    def _parseSparqlBindings(self, bindings: list[dict[str, Any]]) -> tuple[str, dict[str, list[str]]]:
-        """Group flat SPARQL binding rows into property lists mapped by P-ID (e.g. 'P31')."""
-        claims: dict[str, list[str]] = {}
+
+    def _parseSparqlBindings(self, bindings: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+        """Group flat SPARQL binding rows into property lists mapped by P-ID (e.g. 'P31') and label."""
+        claims: dict[str, Any] = {}
         resolvedQid = ""
 
         for row in bindings:
@@ -145,13 +153,18 @@ class WikidataService:
                 itemUri = row["item"]["value"]
                 resolvedQid = itemUri.rsplit("/", 1)[-1]
 
+            # extract primary entity label if available and not yet set
+            if "label" not in claims and "itemLabel" in row:
+                lbl = row["itemLabel"].get("value", "").strip()
+                if lbl:
+                    claims["label"] = lbl
+
             propUri = row.get("property", {}).get("value", "")
             propPid = propUri.rsplit("/", 1)[-1]  # Extracts 'P31', 'P106', etc.
 
             valNode = row.get("value", {})
             val = valNode.get("value", "")
 
-            # if the value URI is a Wikidata entity, extract label/Q-ID cleanly
             if val.startswith("http://www.wikidata.org/entity/"):
                 val = val.rsplit("/", 1)[-1]
 
