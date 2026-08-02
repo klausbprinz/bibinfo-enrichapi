@@ -1,4 +1,3 @@
-# container/Containerfile
 FROM python:3.11-slim
 
 # prevent Python from writing .pyc files and enable unbuffered output for FastAPI logs
