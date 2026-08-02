@@ -6,10 +6,12 @@ class OeNBRequestData(BaseModel):
     
     # flexible main identifier (optional for bypass queries)
     identifier: str | None = Field(
-        default=None, description="The primary search term (Barcode or AC-Number)"
+        default=None, description="The primary search term (Barcode or AC-Number)",
+        examples=["AC14474940"]
     )
     identifierType: Literal["barcode", "ac"] | None = Field(
-        default=None, description="Explicitly state of what type the identifier is"
+        default=None, description="Explicitly state of what type the identifier is",
+        examples=["ac"]
     )
     
     # optional direct bypass identifiers (if user already has them)
