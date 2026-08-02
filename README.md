@@ -53,6 +53,9 @@ podman run -d -p 8000:8000 --name enrichapi enrichapi:latest
 ```
 3. **Open `http://localhost:8000/docs` in your browser.**
 
+### Example usage
+Start the API server, open `notebooks/exampleUsage.ipynb`, and run all cells.
+
 ---
 
 
