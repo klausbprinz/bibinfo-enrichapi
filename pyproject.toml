@@ -22,11 +22,11 @@ dev = [
     "pytest-cov>=6.0.0"
 ]
 
-# tell setuptools where your code lives
+# tell setuptools where code lives
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# configure pytest settings directly in this file
+# configure pytest settings here
 [tool.pytest.ini_options]
 addopts = "--cov=enrichapi --cov-report=term-missing --cov-report=html"
 testpaths = ["tests"]
