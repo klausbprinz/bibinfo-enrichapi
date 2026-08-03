@@ -48,6 +48,10 @@
           ],
           "default": null,
           "description": "The primary search term (Barcode or AC-Number)",
+          "examples": [
+            "AC14474940",
+            "+Z168276302"
+          ],
           "title": "Identifier"
         },
         "identifierType": {
@@ -65,6 +69,10 @@
           ],
           "default": null,
           "description": "Explicitly state of what type the identifier is",
+          "examples": [
+            "ac",
+            "barcode"
+          ],
           "title": "Identifiertype"
         },
         "gndId": {
@@ -78,6 +86,10 @@
           ],
           "default": null,
           "description": "Direct GND ID bypass if known",
+          "examples": [
+            null,
+            "2024703-5"
+          ],
           "title": "Gndid"
         },
         "wikidataId": {
@@ -91,6 +103,10 @@
           ],
           "default": null,
           "description": "Direct Wikidata ID bypass if known",
+          "examples": [
+            null,
+            "Q76518"
+          ],
           "title": "Wikidataid"
         },
         "isbn": {
@@ -104,18 +120,16 @@
           ],
           "default": null,
           "description": "Direct ISBN ID bypass if known",
+          "examples": [
+            null,
+            "9781473224469"
+          ],
           "title": "Isbn"
         },
         "fetchMarc21MD": {
           "default": true,
           "description": "Fetch core MARC21 record via SRU",
           "title": "Fetchmarc21Md",
-          "type": "boolean"
-        },
-        "fetchSimilarSRU": {
-          "default": false,
-          "description": "Fetch similar records via subsidiary SRU queries",
-          "title": "Fetchsimilarsru",
           "type": "boolean"
         },
         "fetchLobidGND": {
@@ -131,13 +145,13 @@
           "type": "boolean"
         },
         "fetchCover": {
-          "default": true,
+          "default": false,
           "description": "Fetch Open Library Book Cover",
           "title": "Fetchcover",
           "type": "boolean"
         },
         "fetchDescription": {
-          "default": true,
+          "default": false,
           "description": "Fetch Google Books Description",
           "title": "Fetchdescription",
           "type": "boolean"

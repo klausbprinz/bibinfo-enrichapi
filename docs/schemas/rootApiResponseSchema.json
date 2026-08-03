@@ -847,8 +847,21 @@
     },
     "DefaultWikidata": {
       "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Primary entity label/name",
+          "title": "Label"
+        },
         "P31": {
-          "description": "Instance of (P31)",
+          "description": "P31",
           "items": {
             "type": "string"
           },
@@ -856,7 +869,7 @@
           "type": "array"
         },
         "P18": {
-          "description": "Image (P18)",
+          "description": "P18",
           "items": {
             "type": "string"
           },
@@ -2010,8 +2023,21 @@
     },
     "WikidataConferenceEvent": {
       "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Primary entity label/name",
+          "title": "Label"
+        },
         "P31": {
-          "description": "Instance of (P31)",
+          "description": "P31",
           "items": {
             "type": "string"
           },
@@ -2019,7 +2045,7 @@
           "type": "array"
         },
         "P18": {
-          "description": "Image (P18)",
+          "description": "P18",
           "items": {
             "type": "string"
           },
@@ -2134,8 +2160,21 @@
     },
     "WikidataCorporate": {
       "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Primary entity label/name",
+          "title": "Label"
+        },
         "P31": {
-          "description": "Instance of (P31)",
+          "description": "P31",
           "items": {
             "type": "string"
           },
@@ -2143,7 +2182,7 @@
           "type": "array"
         },
         "P18": {
-          "description": "Image (P18)",
+          "description": "P18",
           "items": {
             "type": "string"
           },
@@ -2250,8 +2289,21 @@
     },
     "WikidataPerson": {
       "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Primary entity label/name",
+          "title": "Label"
+        },
         "P31": {
-          "description": "Instance of (P31)",
+          "description": "P31",
           "items": {
             "type": "string"
           },
@@ -2259,7 +2311,7 @@
           "type": "array"
         },
         "P18": {
-          "description": "Image (P18)",
+          "description": "P18",
           "items": {
             "type": "string"
           },
