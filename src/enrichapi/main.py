@@ -75,7 +75,7 @@ async def enrichData(request: EnrichmentRequest):
             )
 
         except HTTPException:
-            # Re-raise explicit HTTP exceptions without redundant logging
+            # re-raise explicit HTTP exceptions without redundant logging
             raise
         except Exception as e:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
