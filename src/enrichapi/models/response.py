@@ -30,7 +30,7 @@ class OenbResponse(BaseInstitutionResponse):
     """The explicit footprint for the Austrian National Library."""
 
     iName: Literal["oenb"] = "oenb"
-    identifierType: Literal["barcode", "ac"] | None = Field(
+    identifierType: Literal["barcode", "bibId", "ac"] | None = Field(
         default=None, description="Type of input identifier used"
     )
 

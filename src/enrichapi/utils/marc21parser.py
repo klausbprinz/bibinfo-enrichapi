@@ -383,7 +383,7 @@ def extractAdditionalRecData(marcRecord: etree._Element) -> dict:
     issns = [issn.split()[0] for issn in rawIssns]
 
     return {
-        "ac": acNumber or "UNKNOWN",
+        "bibId": acNumber or "UNKNOWN",
         "titleMain": titleMain,
         "callNumbers": list(dict.fromkeys(callNumbers)),
         "isbns": list(dict.fromkeys(isbns)),

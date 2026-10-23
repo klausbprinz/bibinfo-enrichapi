@@ -6,12 +6,15 @@ class OeNBRequestData(BaseModel):
     
     # flexible main identifier (optional for bypass queries)
     identifier: str | None = Field(
-        default=None, description="The primary search term (Barcode or AC-Number)",
+        default=None, description="The primary search term (Barcode or Bib-ID/AC-Number)",
         examples=["AC14474940", "+Z168276302"]
     )
-    identifierType: Literal["barcode", "ac"] | None = Field(
-        default=None, description="Explicitly state of what type the identifier is",
-        examples=["ac", "barcode"]
+    
+    # updated: added "bibId" as the new generic standard, kept "ac" for backward compatibility
+    identifierType: Literal["barcode", "bibId", "ac"] | None = Field(
+        default=None, 
+        description="Explicitly state what type the identifier is (use 'bibId' for AC-Numbers, PPNs, etc.)",
+        examples=["bibId", "barcode"]
     )
     
     # optional direct bypass identifiers (if user already has them)

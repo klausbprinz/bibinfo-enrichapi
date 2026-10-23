@@ -212,15 +212,15 @@ class SruService:
         taskTypes = []
         finalRecords = []
 
-        # extract primaryBib identifier (controlfield 009)
-        baseAc = None
+        # extract primaryBib identifier
+        baseBibId = None
         if marcData.identifier:
             for idObj in marcData.identifier:
                 if idObj.idType == "primaryBib" and idObj.value:
-                    baseAc = idObj.value
+                    baseBibId = idObj.value
                     break
 
-        logger.info(f"[SRU] Preparing subsidiary searches for base record AC='{baseAc}'")
+        logger.info(f"[SRU] Preparing subsidiary searches for base record BibID='{baseBibId}'")
 
         # author search
         if data.fetchSimilarByAuthor:
@@ -230,7 +230,7 @@ class SruService:
                 tasks.append(
                     self._executeSubsidiarySRU(
                         f'alma.creator="{authorName}"', 
-                        baseIdentifier=baseAc, 
+                        baseIdentifier=baseBibId, 
                         maxRecs=data.maxRecs
                     )
                 )
@@ -255,7 +255,7 @@ class SruService:
                 tasks.append(
                     self._executeSubsidiarySRU(
                         queryStr, 
-                        baseIdentifier=baseAc, 
+                        baseIdentifier=baseBibId, 
                         maxRecs=data.maxRecs
                     )
                 )
@@ -315,7 +315,7 @@ class SruService:
                 tasks.append(
                     self._executeSubsidiarySRU(
                         queryStr, 
-                        baseIdentifier=baseAc, 
+                        baseIdentifier=baseBibId, 
                         maxRecs=data.maxRecs
                     )
                 )
@@ -410,7 +410,7 @@ class SruService:
                 recDict = parse.extractAdditionalRecData(recordElem)
                 
                 # guardrail 1: filter out base record if matched
-                if baseIdClean and recDict.get("ac") == baseIdClean:
+                if baseIdClean and recDict.get("bibId") == baseIdClean:
                     logger.debug(f"[SRU] Base record '{baseIdClean}' filtered from subsidiary search results")
                     continue
 

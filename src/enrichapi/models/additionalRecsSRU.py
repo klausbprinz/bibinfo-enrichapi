@@ -1,14 +1,17 @@
 from typing import Literal, Union, Annotated, Any
-from pydantic import BaseModel, Field, Discriminator, Tag
+from pydantic import BaseModel, Field, Discriminator, Tag, AliasChoices
 
 from .basicMarc21MD import Marc21MdClassificationNumber
 
 class AdditionalRec(BaseModel):
 
-    ac: str = Field(description="AC/009 identifier of additional record")
+    # generalized to bibId, but keeps "ac" as a fallback alias during transition
+    bibId: str = Field(
+        description="Primary bibliographic identifier (e.g., AC number, PPN)",
+        validation_alias=AliasChoices("bibId", "ac")
+    )
     titleMain: str | None = Field(description="Title (245a NR)")
     callNumbers: list[str] = Field(default_factory=list, description="Call number identifiers of additional record")
-    #barcodes: list[str] = Field(default_factory=list, description="Barcode identifiers of additional record")
     isbns: list[str] = Field(default_factory=list, description="ISBN identifiers of additional record")
     issns: list[str] = Field(default_factory=list, description="ISSN identifiers of additional record")
 
