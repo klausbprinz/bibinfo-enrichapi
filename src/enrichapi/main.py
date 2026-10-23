@@ -1,4 +1,4 @@
-# run with "fastapi dev main.py"
+# run with "fastapi dev src/enrichapi/main.py"
 
 import logging
 import time
