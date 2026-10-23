@@ -1,6 +1,6 @@
 from lxml import etree
 
-from .almaType import getBibMaterialType, getResourceType
+from .almaType import getMarc21MaterialType, getMarc21ResourceType
 
 nsMap = {"marc": "http://www.loc.gov/MARC21/slim"}
 
@@ -333,7 +333,7 @@ def extractBibMaterialType(marcRecord: etree._Element) -> str | None:
     ldrElem = marcRecord.find('marc:leader', namespaces=nsMap)
     ldrStr = ldrElem.text if (ldrElem is not None and ldrElem.text) else None
 
-    return getBibMaterialType(ldrStr)
+    return getMarc21MaterialType(ldrStr, lang="de")
 
 
 def extractBibResourceType(marcRecord: etree._Element) -> str | None:
@@ -344,7 +344,7 @@ def extractBibResourceType(marcRecord: etree._Element) -> str | None:
     cf008Elem = marcRecord.find('marc:controlfield[@tag="008"]', namespaces=nsMap)
     cf008Str = cf008Elem.text if (cf008Elem is not None and cf008Elem.text) else None
 
-    return getResourceType(ldrStr, cf008Str)
+    return getMarc21ResourceType(ldrStr, cf008Str, lang="de")
 
 
 def extractAdditionalRecData(marcRecord: etree._Element) -> dict:
