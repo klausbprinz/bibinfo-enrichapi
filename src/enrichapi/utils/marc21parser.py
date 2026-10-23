@@ -1,6 +1,7 @@
 from lxml import etree
 
 from .almaType import getMarc21MaterialType, getMarc21ResourceType
+from .oenbLibLocMap import libDict, locDict
 
 nsMap = {"marc": "http://www.loc.gov/MARC21/slim"}
 
@@ -311,9 +312,9 @@ def extractHoldingInfos(marcRecord: etree._Element) -> list[dict]:
         # build dict mimicking nested Pydantic structure
         holdingDict = {
             "libraryCode": libCode,
-            "libraryLabel": libLabel,
+            "libraryLabel": libDict[libLabel] if libLabel in libDict else libLabel,
             "locationCode": locCode,
-            "locationLabel": locLabel,
+            "locationLabel": locDict[locLabel] if locLabel in locDict else locLabel,
             "callNumber": callNum,
             "itemInfos": {
                 "numOfItems": numItems,
