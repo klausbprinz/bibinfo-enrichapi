@@ -3,7 +3,7 @@
 import logging
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 
 from .handlers import baseFetchOeNB
 from .models.request import OeNBRequestData, EnrichmentRequest
@@ -44,7 +44,21 @@ ENRICHMENT_STRATEGIES = {
 @app.post(
     "/enrich", 
     response_model=RootApiResponse, 
-    response_model_by_alias=False
+    response_model_by_alias=False,
+    summary="Enrich bibliographic records and institutional metadata",
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Record not found in the library catalog",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Record with identifier 'AC00000000' not found in catalog."
+                    }
+                }
+            },
+        },
+        # TODO: add HTTP 300 Multiple Choices here later for Option B (ISBNs)!
+    }
 )    # using the nested master wrapper and ensure pydantic field names are used
 async def enrichData(request: EnrichmentRequest):
     startTime = time.perf_counter()
