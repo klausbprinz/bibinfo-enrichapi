@@ -1,6 +1,7 @@
 from typing import Literal, Union, Annotated, Any
 from pydantic import BaseModel, Field, Discriminator, Tag
 
+from .envelope import EnrichmentEnvelope
 from .basicMarc21MD import BasicMarc21MD
 from .additionalRecsSRU import AdditionalRecsSRU
 from .lobidGND import DataLobidGND
@@ -18,13 +19,23 @@ class BaseInstitutionResponse(BaseModel):
     identifier: str | None = Field(
         default=None, description="System identifier (e.g., Barcode or Bib Identifier)"
     )
+
     basicMarc21MD: BasicMarc21MD | None = Field(default=None, description="Basic Marc21 metadata")
     additionalRecsSRU: AdditionalRecsSRU | None = Field(default=None, description="Similar Records via SRU")
-    gndInfoLobid: DataLobidGND | None = Field(default=None, description="Data fetched via Lobid GND API")
-    wikidataData: DataWikidata | None = Field(default=None, description="Data fetched via Wikidata SPARQL")
-    bookCover: BookCoverOpenLibrary | None = Field(default=None, description="Book cover fetched via Open Library")
-    bookDescription: DescriptionGoogleBooks | None = Field(default=None, description="Description fetched via GoogleBooks")
 
+    # wrap auxiliary enrichment services in the generic status envelope
+    gndInfoLobid: EnrichmentEnvelope[DataLobidGND] | None = Field(
+        default=None, description="Data fetched via Lobid GND API with execution diagnostics"
+    )
+    wikidataData: EnrichmentEnvelope[DataWikidata] | None = Field(
+        default=None, description="Data fetched via Wikidata SPARQL with execution diagnostics"
+    )
+    bookCover: EnrichmentEnvelope[BookCoverOpenLibrary] | None = Field(
+        default=None, description="Book cover fetched via Open Library with execution diagnostics"
+    )
+    bookDescription: EnrichmentEnvelope[DescriptionGoogleBooks] | None = Field(
+        default=None, description="Description fetched via GoogleBooks with execution diagnostics"
+    )
 
 class OenbResponse(BaseInstitutionResponse):
     """The explicit footprint for the Austrian National Library."""

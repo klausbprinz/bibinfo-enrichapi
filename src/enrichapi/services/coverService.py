@@ -16,12 +16,15 @@ class CoverService:
         basicMarcMd: Dict[str, Any], 
         bypassIsbn: Optional[str] = None,
         imageSize: str = "M"
-    ) -> Optional[BookCoverOpenLibrary]:
+    ) -> Dict[str, Any]:
         """
         Extracts ISBN from basicMarc21MD (or uses bypassIsbn) and validates 
         the Open Library cover image URL.
+        Returns a standardized EnrichmentEnvelope dictionary containing 
+        status, diagnostic message, and payload data.
         """
-        # resolve ISBN (bypass > MARC21 extracted identifiers)
+        
+        # phase 1: pre-flight check - resolve ISBN (bypass > MARC21 extracted identifiers)
         targetIsbn = bypassIsbn
         sourceType = "bypassIsbn" if bypassIsbn else "MARC21 metadata"
         
@@ -34,22 +37,30 @@ class CoverService:
                         break
 
         if not targetIsbn:
-            logger.warning("[Cover] No valid ISBN provided or found in MARC metadata. Skipping cover lookup.")
-            return None
+            logger.debug("[Cover] Skipped cover lookup: No valid ISBN provided or found in MARC metadata")
+            return {
+                "status": "skipped",
+                "message": "No valid ISBN provided or found in MARC metadata for cover lookup",
+                "data": None
+            }
 
         cleanIsbn = targetIsbn.replace("-", "").replace(" ", "")
         logger.info(f"[Cover] Initiating cover check | isbn='{cleanIsbn}' size='{imageSize}' (source={sourceType})")
 
-        # build model instance to compute candidate URL
+        # phase 2: construct candidate URL model instance
         coverModel = BookCoverOpenLibrary(isbn=cleanIsbn, imageSize=imageSize)
         
         if not coverModel.coverURL:
             logger.warning(f"[Cover] Failed to generate valid candidate cover URL for ISBN '{cleanIsbn}'")
-            return None
+            return {
+                "status": "error",
+                "message": f"Failed to construct valid cover URL for ISBN '{cleanIsbn}'",
+                "data": None
+            }
 
         logger.debug(f"[Cover] Generated candidate cover URL: '{coverModel.coverURL}'")
 
-        # validate image presence via async HEAD request (Open Library returns 404 if missing)
+        # phase 3: validate image presence via async HEAD request (Open Library returns 404 if missing)
         client = self._client or httpx.AsyncClient(timeout=5.0)
         shouldClose = self._client is None
         startTime = time.perf_counter()
@@ -61,20 +72,38 @@ class CoverService:
 
             if response.status_code == 200:
                 logger.info(f"[Cover] Valid cover image confirmed (HTTP 200) for ISBN '{cleanIsbn}' at '{coverModel.coverURL}' ({elapsedMs}ms)")
-                return coverModel
+                return {
+                    "status": "success",
+                    "message": f"Successfully validated cover image for ISBN '{cleanIsbn}'",
+                    "data": coverModel
+                }
             else:
                 logger.info(f"[Cover] Cover image not found (HTTP {response.status_code}) for ISBN '{cleanIsbn}' ({elapsedMs}ms)")
-                return None
+                return {
+                    "status": "not_found",
+                    "message": f"Cover image not found for ISBN '{cleanIsbn}' (HTTP {response.status_code})",
+                    "data": None
+                }
         
         except httpx.RequestError as exc:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.warning(f"[Cover] Network request error validating cover URL for ISBN '{cleanIsbn}' ({elapsedMs}ms): {exc}")
-            return None
+            errorMsg = f"Network error validating cover URL for ISBN '{cleanIsbn}' ({elapsedMs}ms): {exc}"
+            logger.warning(f"[Cover] {errorMsg}")
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
 
         except Exception as exc:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.error(f"[Cover] Unexpected error validating cover URL for ISBN '{cleanIsbn}' ({elapsedMs}ms): {exc}", exc_info=True)
-            return None
+            errorMsg = f"Unexpected error validating cover URL for ISBN '{cleanIsbn}': {exc}"
+            logger.error(f"[Cover] {errorMsg} ({elapsedMs}ms)", exc_info=True)
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
 
         finally:
             if shouldClose:

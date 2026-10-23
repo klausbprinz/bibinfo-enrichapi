@@ -15,12 +15,15 @@ class AbstractService:
         self, 
         basicMarcMd: Dict[str, Any], 
         bypassIsbn: Optional[str] = None
-    ) -> Optional[DescriptionGoogleBooks]:
+    ) -> Dict[str, Any]:
         """
         Fetches book description using Google Books API with an automatic 
         fallback to Open Library's Works API.
+        Returns a standardized EnrichmentEnvelope dictionary containing 
+        status, diagnostic message, and payload data.
         """
-        # extract ISBN
+        
+        # phase 1: pre-flight check - extract ISBN (bypass > MARC21 metadata)
         targetIsbn = bypassIsbn
         sourceType = "bypassIsbn" if bypassIsbn else "MARC21 metadata"
 
@@ -33,8 +36,12 @@ class AbstractService:
                         break
 
         if not targetIsbn:
-            logger.warning("[Abstract] No valid ISBN provided or found in metadata. Skipping description fetch.")
-            return None
+            logger.debug("[Abstract] Skipped description lookup: No valid ISBN provided or found in metadata")
+            return {
+                "status": "skipped",
+                "message": "No valid ISBN provided or found in metadata for description lookup",
+                "data": None
+            }
 
         cleanIsbn = targetIsbn.replace("-", "").replace(" ", "")
         logger.info(f"[Abstract] Initiating description lookup | isbn='{cleanIsbn}' (source={sourceType})")
@@ -44,23 +51,53 @@ class AbstractService:
         startTime = time.perf_counter()
 
         try:
-            # primary Strategy: Google Books API
+            # phase 2: execute primary strategy (Google Books API)
             logger.info(f"[Abstract] Attempting Primary Strategy: Google Books API for ISBN '{cleanIsbn}'...")
             description = await self._fetchFromGoogleBooks(client, cleanIsbn)
             
             # fallback strategy: Open Library API (if Google returns nothing)
             if not description:
-                logger.info(f"[Abstract] Google Books yield no result. Attempting Fallback Strategy: Open Library API for ISBN '{cleanIsbn}'...")
+                logger.info(f"[Abstract] Google Books yielded no result. Attempting Fallback Strategy: Open Library API for ISBN '{cleanIsbn}'...")
                 description = await self._fetchFromOpenLibrary(client, cleanIsbn)
 
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
 
+            # phase 3: evaluate result and wrap in appropriate status envelope
             if description:
                 logger.info(f"[Abstract] Successfully retrieved book description for ISBN '{cleanIsbn}' ({len(description)} chars) ({elapsedMs}ms)")
-                return DescriptionGoogleBooks(description=description)
+                validatedModel = DescriptionGoogleBooks(description=description)
+                return {
+                    "status": "success",
+                    "message": f"Successfully retrieved book description for ISBN '{cleanIsbn}'",
+                    "data": validatedModel
+                }
 
-            logger.warning(f"[Abstract] No description found on both Google Books and Open Library for ISBN '{cleanIsbn}' ({elapsedMs}ms)")
-            return None
+            logger.info(f"[Abstract] No description found on both Google Books and Open Library for ISBN '{cleanIsbn}' ({elapsedMs}ms)")
+            return {
+                "status": "not_found",
+                "message": f"No book description found for ISBN '{cleanIsbn}' in external sources",
+                "data": None
+            }
+
+        except httpx.HTTPError as e:
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            errorMsg = f"Network or HTTP error during description fetch for ISBN '{cleanIsbn}': {e}"
+            logger.warning(f"[Abstract] {errorMsg} ({elapsedMs}ms)")
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
+
+        except Exception as e:
+            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            errorMsg = f"Unexpected error during description fetch for ISBN '{cleanIsbn}': {e}"
+            logger.error(f"[Abstract] {errorMsg} ({elapsedMs}ms)", exc_info=True)
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
 
         finally:
             if shouldClose:

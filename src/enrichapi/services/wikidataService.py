@@ -24,14 +24,21 @@ class WikidataService:
         wikidataId: str | None,
         gndId: str | None,
         nameType: str | None = None,
-    ) -> DataWikidata | None:
+    ) -> dict[str, Any]:
         """
         Fetches Wikidata entity claims using either a direct Q-ID or a GND ID lookup.
+        Returns a standardized EnrichmentEnvelope dictionary containing 
+        status, diagnostic message, and payload data.
         """
-        # guard clause: ensure at least one identifier is available
+        
+        # phase 1: pre-flight check - ensure at least one identifier is available
         if not wikidataId and not gndId:
-            logger.warning("[Wikidata] Neither wikidataId nor gndId was provided to WikidataService.")
-            return None
+            logger.debug("[Wikidata] Skipped Wikidata lookup: Neither wikidataId nor gndId provided")
+            return {
+                "status": "skipped",
+                "message": "No wikidataId or gndId available for SPARQL lookup",
+                "data": None
+            }
 
         cleanQid = wikidataId.strip() if wikidataId else None
         cleanGnd = gndId.strip() if gndId else None
@@ -40,14 +47,14 @@ class WikidataService:
             f"[Wikidata] Initiating entity fetch | qid='{cleanQid}' gndId='{cleanGnd}' nameType='{nameType}'"
         )
 
-        # build strict german sparql query
+        # construct strict german sparql query
         query = self._buildSparqlQuery(cleanQid, cleanGnd)
         logger.debug(f"[Wikidata] Constructed SPARQL Query:\n{query}")
 
         startTime = time.perf_counter()
 
         try:
-            # execute async get request against wikidata endpoint
+            # phase 2: execute async GET request against wikidata SPARQL endpoint
             response = await self.client.get(
                 WIKIDATA_SPARQL_URL,
                 params={"query": query, "format": "json"},
@@ -62,31 +69,50 @@ class WikidataService:
 
         except TimeoutException:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.error(f"[Wikidata] Timeout after {elapsedMs}ms querying SPARQL endpoint for Q-ID='{cleanQid}' / GND='{cleanGnd}'")
-            return None
+            errorMsg = f"Timeout after {elapsedMs}ms querying Wikidata SPARQL endpoint"
+            logger.error(f"[Wikidata] {errorMsg} for Q-ID='{cleanQid}' / GND='{cleanGnd}'")
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
+            
         except HTTPError as e:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             status = e.response.status_code if hasattr(e, "response") and e.response is not None else "N/A"
+            errorMsg = f"HTTP error {status} querying Wikidata SPARQL endpoint: {e}"
             logger.error(
-                f"[Wikidata] Failed to query Wikidata SPARQL endpoint (HTTP {status}) "
-                f"for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms): {e}",
+                f"[Wikidata] {errorMsg} for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms)",
                 exc_info=True
             )
-            return None
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
+            
         except Exception as e:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            errorMsg = f"Unexpected error querying Wikidata SPARQL endpoint: {e}"
             logger.error(
-                f"[Wikidata] Unexpected error parsing Wikidata SPARQL response "
-                f"for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms): {e}",
+                f"[Wikidata] {errorMsg} for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms)",
                 exc_info=True
             )
-            return None
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
 
-        # extract binding rows from query response
+        # phase 3: parse binding rows and verify returned bindings exist
         bindings = sparqlData.get("results", {}).get("bindings", [])
         if not bindings:
             logger.info(f"[Wikidata] No Wikidata bindings/entry found for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms)")
-            return None
+            return {
+                "status": "not_found",
+                "message": f"No entity record found in Wikidata for Q-ID='{cleanQid}' or GND='{cleanGnd}'",
+                "data": None
+            }
 
         logger.debug(f"[Wikidata] Received {len(bindings)} SPARQL binding row(s) from endpoint ({elapsedMs}ms)")
 
@@ -102,16 +128,26 @@ class WikidataService:
             logger.debug(f"[Wikidata] Injected explicit MARC21 nameType '{nameType}' into claims map")
 
         try:
-            # validate and build final pydantic model
+            # phase 4: validate payload into Pydantic model
             validatedModel = DataWikidata(
                 wikidataId=resolvedQid,
                 wikidataInformation=rawClaims,
             )
             logger.info(f"[Wikidata] Successfully validated DataWikidata model for Q-ID='{resolvedQid}' ({elapsedMs}ms)")
-            return validatedModel
+            return {
+                "status": "success",
+                "message": f"Successfully retrieved Wikidata entity for Q-ID '{resolvedQid}'",
+                "data": validatedModel
+            }
+            
         except Exception as e:
-            logger.error(f"[Wikidata] Pydantic validation error constructing DataWikidata for Q-ID='{resolvedQid}': {e}", exc_info=True)
-            return None
+            errorMsg = f"Pydantic validation error constructing DataWikidata for Q-ID='{resolvedQid}': {e}"
+            logger.error(f"[Wikidata] {errorMsg}", exc_info=True)
+            return {
+                "status": "error",
+                "message": errorMsg,
+                "data": None
+            }
 
 
     def _buildSparqlQuery(self, wikidataId: str | None, gndId: str | None) -> str:
