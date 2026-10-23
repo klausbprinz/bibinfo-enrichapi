@@ -115,8 +115,7 @@ class WikidataService:
 
 
     def _buildSparqlQuery(self, wikidataId: str | None, gndId: str | None) -> str:
-        """Constructs a targeted SPARQL SELECT query strictly for German labels."""
-        # determine subject clause based on available identifier type
+        """Constructs a targeted SPARQL query using the official Wikidata label service for german results."""
         if wikidataId:
             qidURI = f"wd:{wikidataId}" if not wikidataId.startswith("http") else f"<{wikidataId}>"
             subjectClause = f"BIND({qidURI} AS ?item)"
@@ -124,14 +123,8 @@ class WikidataService:
             subjectClause = f'?item wdt:P227 "{gndId}" .'
 
         return f"""
-        SELECT ?item ?itemLabel ?property ?value WHERE {{
+        SELECT ?item ?itemLabel ?property ?value ?valueLabel WHERE {{
           {subjectClause}
-          
-          # strictly grab german label only
-          OPTIONAL {{ 
-            ?item rdfs:label ?itemLabel . 
-            FILTER(LANG(?itemLabel) = "de") 
-          }}
 
           ?item ?p ?statement .
           ?statement ?ps ?rawVal .
@@ -139,12 +132,12 @@ class WikidataService:
           ?property wikibase:claim ?p .
           ?property wikibase:statementProperty ?ps .
           
-          # strictly grab german label for referenced entities only
-          OPTIONAL {{
-            ?rawVal rdfs:label ?valueLabel .
-            FILTER(LANG(?valueLabel) = "de")
-          }}
-          BIND(COALESCE(?valueLabel, ?rawVal) AS ?value)
+          # bind raw value for label service resolution
+          BIND(?rawVal AS ?value)
+
+          # wikibase label service automatically fetches german labels (with english fallback) 
+          # for ?item and any entity referenced in ?value
+          SERVICE wikibase:label {{ bd:serviceParam wikibase:language "de,en". }}
         }}
         """
 
@@ -160,20 +153,21 @@ class WikidataService:
                 itemUri = row["item"]["value"]
                 resolvedQid = itemUri.rsplit("/", 1)[-1]
 
-            # extract primary entity label if available and not yet set
+            # extract primary entity label provided by the label service
             if "label" not in claims and "itemLabel" in row:
                 lbl = row["itemLabel"].get("value", "").strip()
                 if lbl:
                     claims["label"] = lbl
 
-            # extract property p-id from uri (e.g., http://www.wikidata.org/prop/direct/P31 -> P31)
+            # extract property p-id from uri
             propUri = row.get("property", {}).get("value", "")
             propPid = propUri.rsplit("/", 1)[-1]
 
-            valNode = row.get("value", {})
-            val = valNode.get("value", "")
+            # prefer valueLabel if resolved by label service, otherwise fallback to value node
+            valNode = row.get("valueLabel", {}) or row.get("value", {})
+            val = valNode.get("value", "").strip()
 
-            # normalize entity uri values to short q-ids
+            # if valueLabel returned a raw Q-ID URL instead of a text label, extract the short Q-ID
             if val.startswith("http://www.wikidata.org/entity/"):
                 val = val.rsplit("/", 1)[-1]
 
