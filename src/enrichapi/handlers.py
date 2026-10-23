@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import asyncio
 import logging
 import time
@@ -44,6 +45,7 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             marcStartTime = time.perf_counter()
             try:
                 marcXml = await sruService.fetchRecord(data.identifier, data.identifierType)
+                
                 if marcXml is not None:
                     marcData = sruService.extractMarc21Metadata(marcXml)
                     
@@ -52,16 +54,21 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
                         extractedGnd = marcData.mainEntry.gndIdentifier
                         if extractedGnd:
                             logger.info(f"[Handler] Dynamically extracted GND ID '{extractedGnd}' from MARC21 mainEntry")
+                else:
+                    # SRU returned no records -> Trigger clean 404 Not Found response
+                    marcElapsedMs = round((time.perf_counter() - marcStartTime) * 1000, 2)
+                    logger.warning(f"[Handler] Phase 1: No records found for identifier '{data.identifier}' ({marcElapsedMs}ms)")
+                    raise HTTPException(status_code=404, detail="Record not found in library catalog")
 
                 marcElapsedMs = round((time.perf_counter() - marcStartTime) * 1000, 2)
-                if marcData:
-                    logger.info(f"[Handler] Phase 1 Complete: MARC21 record fetched and parsed ({marcElapsedMs}ms)")
-                else:
-                    logger.warning(f"[Handler] Phase 1 Warning: SRU query succeeded but yielded no MARC21 data ({marcElapsedMs}ms)")
+                logger.info(f"[Handler] Phase 1 Complete: MARC21 record fetched and parsed ({marcElapsedMs}ms)")
 
+            except HTTPException:
+                raise  # FastAPI passes 404 straight through to client
             except Exception as e:
                 marcElapsedMs = round((time.perf_counter() - marcStartTime) * 1000, 2)
                 logger.error(f"[Handler] Phase 1 Error: Failed processing SRU MARC21 record ({marcElapsedMs}ms): {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Internal error fetching core library record")
         else:
             logger.debug("[Handler] Phase 1 Skipped: fetchMarc21MD is False or identifier credentials missing")
 
