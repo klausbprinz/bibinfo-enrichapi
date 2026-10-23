@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 
-# User-Agent is required by Wikidata's API policy, otherwise requests get blocked (403/429)
+# user-agent is required by wikidata's api policy, otherwise requests get blocked (403/429)
 HEADERS = {
     "User-Agent": "enrichapi/1.0 (mailto:klaus_prinz@gmx.net)",
     "Accept": "application/sparql-results+json",
@@ -28,6 +28,7 @@ class WikidataService:
         """
         Fetches Wikidata entity claims using either a direct Q-ID or a GND ID lookup.
         """
+        # guard clause: ensure at least one identifier is available
         if not wikidataId and not gndId:
             logger.warning("[Wikidata] Neither wikidataId nor gndId was provided to WikidataService.")
             return None
@@ -39,13 +40,14 @@ class WikidataService:
             f"[Wikidata] Initiating entity fetch | qid='{cleanQid}' gndId='{cleanGnd}' nameType='{nameType}'"
         )
 
-        # build SPARQL query
+        # build strict german sparql query
         query = self._buildSparqlQuery(cleanQid, cleanGnd)
         logger.debug(f"[Wikidata] Constructed SPARQL Query:\n{query}")
 
         startTime = time.perf_counter()
 
         try:
+            # execute async get request against wikidata endpoint
             response = await self.client.get(
                 WIKIDATA_SPARQL_URL,
                 params={"query": query, "format": "json"},
@@ -80,6 +82,7 @@ class WikidataService:
             )
             return None
 
+        # extract binding rows from query response
         bindings = sparqlData.get("results", {}).get("bindings", [])
         if not bindings:
             logger.info(f"[Wikidata] No Wikidata bindings/entry found for Q-ID='{cleanQid}' / GND='{cleanGnd}' ({elapsedMs}ms)")
@@ -87,18 +90,19 @@ class WikidataService:
 
         logger.debug(f"[Wikidata] Received {len(bindings)} SPARQL binding row(s) from endpoint ({elapsedMs}ms)")
 
-        # extract resolved Q-ID and group properties into lists
+        # extract resolved q-id and group properties into lists
         resolvedQid, rawClaims = self._parseSparqlBindings(bindings)
         logger.info(
             f"[Wikidata] Resolved entity Q-ID='{resolvedQid}' with {len(rawClaims)} property claim category/categories"
         )
 
-        # inject MARC21 nameType if present so resolveWikidataType routes directly
+        # inject marc21 nametype if present so resolvewikidata type routes directly
         if nameType:
             rawClaims["wikidataType"] = nameType
             logger.debug(f"[Wikidata] Injected explicit MARC21 nameType '{nameType}' into claims map")
 
         try:
+            # validate and build final pydantic model
             validatedModel = DataWikidata(
                 wikidataId=resolvedQid,
                 wikidataInformation=rawClaims,
@@ -111,7 +115,8 @@ class WikidataService:
 
 
     def _buildSparqlQuery(self, wikidataId: str | None, gndId: str | None) -> str:
-        """Constructs a targeted SPARQL SELECT query with clean label extraction."""
+        """Constructs a targeted SPARQL SELECT query strictly for German labels."""
+        # determine subject clause based on available identifier type
         if wikidataId:
             qidURI = f"wd:{wikidataId}" if not wikidataId.startswith("http") else f"<{wikidataId}>"
             subjectClause = f"BIND({qidURI} AS ?item)"
@@ -122,10 +127,11 @@ class WikidataService:
         SELECT ?item ?itemLabel ?property ?value WHERE {{
           {subjectClause}
           
-          # Explicitly grab DE label, fallback to EN label (no row multiplication)
-          OPTIONAL {{ ?item rdfs:label ?labelDe . FILTER(LANG(?labelDe) = "de") }}
-          OPTIONAL {{ ?item rdfs:label ?labelEn . FILTER(LANG(?labelEn) = "en") }}
-          BIND(COALESCE(?labelDe, ?labelEn, "") AS ?itemLabel)
+          # strictly grab german label only
+          OPTIONAL {{ 
+            ?item rdfs:label ?itemLabel . 
+            FILTER(LANG(?itemLabel) = "de") 
+          }}
 
           ?item ?p ?statement .
           ?statement ?ps ?rawVal .
@@ -133,9 +139,10 @@ class WikidataService:
           ?property wikibase:claim ?p .
           ?property wikibase:statementProperty ?ps .
           
+          # strictly grab german label for referenced entities only
           OPTIONAL {{
             ?rawVal rdfs:label ?valueLabel .
-            FILTER(LANG(?valueLabel) IN ("de", "en"))
+            FILTER(LANG(?valueLabel) = "de")
           }}
           BIND(COALESCE(?valueLabel, ?rawVal) AS ?value)
         }}
@@ -148,7 +155,7 @@ class WikidataService:
         resolvedQid = ""
 
         for row in bindings:
-            # extract Q-ID from entity URI (e.g., http://www.wikidata.org/entity/Q1035 -> Q1035)
+            # extract q-id from entity uri (e.g., http://www.wikidata.org/entity/Q1035 -> Q1035)
             if not resolvedQid and "item" in row:
                 itemUri = row["item"]["value"]
                 resolvedQid = itemUri.rsplit("/", 1)[-1]
@@ -159,15 +166,18 @@ class WikidataService:
                 if lbl:
                     claims["label"] = lbl
 
+            # extract property p-id from uri (e.g., http://www.wikidata.org/prop/direct/P31 -> P31)
             propUri = row.get("property", {}).get("value", "")
-            propPid = propUri.rsplit("/", 1)[-1]  # Extracts 'P31', 'P106', etc.
+            propPid = propUri.rsplit("/", 1)[-1]
 
             valNode = row.get("value", {})
             val = valNode.get("value", "")
 
+            # normalize entity uri values to short q-ids
             if val.startswith("http://www.wikidata.org/entity/"):
                 val = val.rsplit("/", 1)[-1]
 
+            # append value to corresponding property list safely
             if propPid and val:
                 claims.setdefault(propPid, [])
                 if val not in claims[propPid]:
