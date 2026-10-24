@@ -116,13 +116,9 @@ class SruService:
                         marcRec = elem.find("srw:recordData/marc:record", namespaces=self.ns)
                         if marcRec is not None:
                             bibIdVal = None
-                            df001 = marcRec.find('marc:controlfield[@tag="001"]', namespaces=self.ns)
-                            if df001 is not None and df001.text:
-                                bibIdVal = df001.text.strip()
-                            else:
-                                df009 = marcRec.find('marc:datafield[@tag="009"]/marc:subfield[@code="a"]', namespaces=self.ns)
-                                if df009 is not None and df009.text:
-                                    bibIdVal = df009.text.strip()
+                            df009 = marcRec.find('marc:controlfield[@tag="009"]', namespaces=self.ns)
+                            if df009 is not None and df009.text:
+                                bibIdVal = df009.text.strip()
                             
                             titleMain, titleRem, _, _ = parse.extractTitleData(marcRec)
                             fullTitle = f"{titleMain} : {titleRem}" if titleRem else titleMain
@@ -137,16 +133,16 @@ class SruService:
                                         break
                             
                             pubNotices = parse.extractPublicationNotices(marcRec)
-                            publisherVal = pubNotices[0].get("publisher") if pubNotices else None
-                            yearVal = pubNotices[0].get("year") if pubNotices else None
+                            publishersVal = pubNotices[0].get("names") if pubNotices else None
+                            yearsVal = pubNotices[0].get("dates") if pubNotices else None
 
                             candidates.append(
                                 IsbnCandidate(
                                     bibId=bibIdVal,
                                     title=fullTitle,
                                     author=authorName,
-                                    publisher=publisherVal,
-                                    year=yearVal
+                                    publishers=publishersVal,
+                                    dates=yearsVal
                                 )
                             )
                     

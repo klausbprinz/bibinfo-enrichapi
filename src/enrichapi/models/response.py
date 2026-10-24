@@ -17,8 +17,8 @@ class IsbnCandidate(BaseModel):
     bibId: str | None = Field(default=None, description="System record identifier (bibId)")
     title: str | None = Field(default=None, description="Title of this specific edition")
     author: str | None = Field(default=None, description="Main author or creator")
-    publisher: str | None = Field(default=None, description="Publisher details")
-    year: str | None = Field(default=None, description="Publication year")
+    publishers: list[str] = Field(default_factory=list, description="Publishers details")
+    dates: list[str] = Field(default_factory=list, description="Publication dates")
 
 
 class IsbnAmbiguityResponse(BaseModel):
@@ -65,7 +65,9 @@ class OenbResponse(BaseInstitutionResponse):
     """The explicit footprint for the Austrian National Library."""
 
     iName: Literal["oenb"] = "oenb"
-    identifierType: Literal["barcode", "bibId", "ac"] | None = Field(
+
+    # updated: added "isbn" here
+    identifierType: Literal["barcode", "bibId", "ac", "isbn"] | None = Field(
         default=None, description="Type of input identifier used"
     )
 
