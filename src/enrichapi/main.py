@@ -1,6 +1,9 @@
 # run with "fastapi dev src/enrichapi/main.py"
 
+import os
 import logging
+from dotenv import load_dotenv
+
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
@@ -16,9 +19,27 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+# load environment variables from .env file
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
+# fetch and validate Google API Key (filter out placeholders/dummies)
+rawApiKey = os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = None
 
+if rawApiKey:
+    # check if its a placeholder or a real key structure (Google keys start with 'AIza')
+    isPlaceholder = any(p in rawApiKey.lower() for p in ["your_api_key", "insert_key", "placeholder", "dummy", "xxx"])
+    if not isPlaceholder and rawApiKey.startswith("AIza"):
+        GOOGLE_API_KEY = rawApiKey
+        logger.info("[Startup] Valid Google API Key detected and loaded successfully.")
+    else:
+        logger.warning("[Startup] GOOGLE_API_KEY found, but it looks like a placeholder/invalid format. Running in anonymous, rate-limited mode.")
+else:
+    logger.warning("[Startup] No GOOGLE_API_KEY found in .env. Google Books will run in anonymous, rate-limited mode.")
+
+    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown logging/events."""

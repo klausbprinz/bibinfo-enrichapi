@@ -1,3 +1,4 @@
+import os
 from fastapi import HTTPException
 import asyncio
 import logging
@@ -22,14 +23,19 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
         f"gndId='{data.gndId}' wikidataId='{data.wikidataId}' isbn='{data.isbn}'"
     )
 
+    # fetch the Google API key from environment variables
+    googleApiKey = os.getenv("GOOGLE_API_KEY")
+
     async with AsyncClient() as client:
         
         # initialize helper pipeline services sharing the active client connection
         sruService = SruService(client)
         lobidService = LobidService(client)
         wikidataService = WikidataService(client)
-        coverService = CoverService(client)
-        abstractService = AbstractService(client)
+
+        # inject Google API key into enrichment services
+        coverService = CoverService(client, googleApiKey=googleApiKey)
+        abstractService = AbstractService(client, googleApiKey=googleApiKey)
         
         extractedGnd: str | None = data.gndId
         extractedWikidata: str | None = data.wikidataId
