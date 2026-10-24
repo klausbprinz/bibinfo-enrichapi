@@ -94,13 +94,17 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             logger.debug("[Handler] Enqueued Task: Similar Records (SRU)")
 
         # Lobid GND task
-        if data.fetchLobidGND and extractedGnd:
+        hasGndPrerequisite = bool(extractedGnd)
+        if data.fetchLobidGND and hasGndPrerequisite:
             tasks.append(lobidService.fetchGndData(extractedGnd))
             taskMappings["lobid"] = len(tasks) - 1
             logger.debug(f"[Handler] Enqueued Task: Lobid GND ('{extractedGnd}')")
+        elif data.fetchLobidGND:
+            logger.warning("[Handler] Lobid GND requested, but no GND ID was found in MARC data or request.")
 
         # Wikidata task
-        if data.fetchWikidata and (extractedWikidata or extractedGnd):
+        hasWikidataPrerequisite = bool(extractedWikidata or extractedGnd)
+        if data.fetchWikidata and hasWikidataPrerequisite:
             tasks.append(
                 wikidataService.fetchWikidata(
                     wikidataId=extractedWikidata,
@@ -110,6 +114,8 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             )
             taskMappings["wikidata"] = len(tasks) - 1
             logger.debug(f"[Handler] Enqueued Task: Wikidata (qid='{extractedWikidata}', gnd='{extractedGnd}')")
+        elif data.fetchWikidata:
+            logger.warning("[Handler] Wikidata requested, but neither Wikidata ID nor GND ID was found.")
 
         # Open Library Book Cover task
         if data.fetchCover:
@@ -157,8 +163,25 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             return None
 
         additionalRecs = getResult("similarRecs")
+
+        # lobid result with skipped fallback envelope
         lobidRes = getResult("lobid")
+        if lobidRes is None and data.fetchLobidGND:
+            lobidRes = {
+                "status": "skipped",
+                "message": "Enrichment skipped: Required GND identifier could not be extracted from the record or request.",
+                "data": None
+            }
+
+        # wikidata result with skipped fallback envelope
         wikidataRes = getResult("wikidata")
+        if wikidataRes is None and data.fetchWikidata:
+            wikidataRes = {
+                "status": "skipped",
+                "message": "Enrichment skipped: Required GND or Wikidata identifier could not be extracted from the record or request.",
+                "data": None
+            }
+        
         coverRes = getResult("cover")
         descriptionRes = getResult("description")
 
