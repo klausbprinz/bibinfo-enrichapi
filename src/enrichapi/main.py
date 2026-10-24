@@ -19,6 +19,8 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 # load environment variables from .env file
 load_dotenv()
 
