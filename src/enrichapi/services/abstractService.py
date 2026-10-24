@@ -52,9 +52,7 @@ class AbstractService:
             except Exception as e:
                 logger.debug(f"[AbstractService] Google Books description check failed/timed out: {e}")
 
-        # ------------------------------------------------------------------
         # tier 2: Open Library Works API (ISBN -> work key -> description)
-        # ------------------------------------------------------------------
         if cleanIsbn:
             try:
                 isbnUrl = f"https://openlibrary.org/isbn/{cleanIsbn}.json"
