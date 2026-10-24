@@ -57,7 +57,23 @@ ENRICHMENT_STRATEGIES = {
                 }
             },
         },
-        # TODO: add HTTP 300 Multiple Choices here later for Option B (ISBNs)!
+        # HTTP 300 multiple choices for ISBN ambiguity
+        300: {
+            "description": "Multiple records found for the provided ISBN",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "ambiguous_isbn",
+                        "isbn": "9783161484100",
+                        "totalMatches": 2,
+                        "candidates": [
+                            {"bibId": "AC12345678", "title": "Example Book (1st Ed)", "author": "John Doe", "publisher": "Academic Press", "year": "2010"},
+                            {"bibId": "AC12345679", "title": "Example Book (2nd Ed)", "author": "John Doe", "publisher": "Academic Press", "year": "2015"}
+                        ]
+                    }
+                }
+            }
+        }
     }
 )    # using the nested master wrapper and ensure pydantic field names are used
 async def enrichData(request: EnrichmentRequest):

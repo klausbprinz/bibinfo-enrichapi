@@ -30,6 +30,9 @@ from ..models.additionalRecsSRU import (
     AdditionalRec
 )
 
+from ..models.response import IsbnAmbiguityResponse, IsbnCandidate
+from fastapi import HTTPException
+
 logger = logging.getLogger(__name__)
 
 class SruService:
@@ -43,15 +46,19 @@ class SruService:
         }
 
     async def fetchRecord(self, identifier: str, idType: str) -> tuple[etree._Element | None, list[str]]:
-        """Handles the HTTP lifecycle, applies strict vs. pragmatic resolution rules, and returns raw XML with warnings."""
+        """Handles the HTTP lifecycle, applies strict vs. pragmatic vs. ISBN ambiguity resolution rules, and returns raw XML with warnings."""
         cleanId = identifier.strip()
         safeId = quote(cleanId, safe="")
         
-        query = (
-            f'alma.barcode={safeId}' 
-            if idType == "barcode" 
-            else f'alma.local_control_field_009={safeId}'
-        )
+        # build query string based on requested identifier type
+        if idType == "barcode":
+            query = f'alma.barcode={safeId}'
+        elif idType in ("bibId", "ac"):
+            query = f'alma.local_control_field_009={safeId}'
+        elif idType == "isbn":
+            query = f'alma.isbn={safeId}'
+        else:
+            query = f'alma.local_control_field_009={safeId}'
         
         url = f"{self.baseUrl}?version=1.2&operation=searchRetrieve&query={query}"
         
@@ -93,6 +100,62 @@ class SruService:
                     logger.warning(f"[SRU] {warningMsg} ({elapsedMs}ms)")
                     warnings.append(warningMsg)
                     return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns), warnings
+
+            # rule 3: ISBN ambiguity handling
+            elif idType == "isbn":
+                if count == 1:
+                    logger.info(f"[SRU] Successfully fetched and matched primary MARC21 record for ISBN '{cleanId}' ({elapsedMs}ms)")
+                    return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns), warnings
+                elif count == 0:
+                    logger.warning(f"[SRU] No records found for ISBN '{cleanId}' (query='{query}') ({elapsedMs}ms)")
+                    return None, warnings
+                else:
+                    logger.warning(f"[SRU] ISBN ambiguity detected: '{cleanId}' matched {count} records. Triggering HTTP 300.")
+                    candidates = []
+                    for elem in recordElems:
+                        marcRec = elem.find("srw:recordData/marc:record", namespaces=self.ns)
+                        if marcRec is not None:
+                            bibIdVal = None
+                            df001 = marcRec.find('marc:controlfield[@tag="001"]', namespaces=self.ns)
+                            if df001 is not None and df001.text:
+                                bibIdVal = df001.text.strip()
+                            else:
+                                df009 = marcRec.find('marc:datafield[@tag="009"]/marc:subfield[@code="a"]', namespaces=self.ns)
+                                if df009 is not None and df009.text:
+                                    bibIdVal = df009.text.strip()
+                            
+                            titleMain, titleRem, _, _ = parse.extractTitleData(marcRec)
+                            fullTitle = f"{titleMain} : {titleRem}" if titleRem else titleMain
+                            
+                            authorName = None
+                            for tag in ("100", "110", "111"):
+                                entryField = marcRec.find(f'marc:datafield[@tag="{tag}"]', namespaces=self.ns)
+                                if entryField is not None:
+                                    entryData = parse.extractEntryData(entryField)
+                                    if entryData and entryData.get("name"):
+                                        authorName = entryData.get("name")
+                                        break
+                            
+                            pubNotices = parse.extractPublicationNotices(marcRec)
+                            publisherVal = pubNotices[0].get("publisher") if pubNotices else None
+                            yearVal = pubNotices[0].get("year") if pubNotices else None
+
+                            candidates.append(
+                                IsbnCandidate(
+                                    bibId=bibIdVal,
+                                    title=fullTitle,
+                                    author=authorName,
+                                    publisher=publisherVal,
+                                    year=yearVal
+                                )
+                            )
+                    
+                    ambiguityResp = IsbnAmbiguityResponse(
+                        isbn=cleanId,
+                        totalMatches=count,
+                        candidates=candidates
+                    )
+                    raise HTTPException(status_code=300, detail=ambiguityResp.model_dump())
 
             return None, warnings
 

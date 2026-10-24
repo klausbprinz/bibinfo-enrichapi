@@ -11,10 +11,11 @@ class OeNBRequestData(BaseModel):
     )
     
     # updated: added "bibId" as the new generic standard, kept "ac" for backward compatibility
-    identifierType: Literal["barcode", "bibId", "ac"] | None = Field(
+    # updated: added "isbn" to the allowed identifier types
+    identifierType: Literal["barcode", "bibId", "ac", "isbn"] | None = Field(
         default=None, 
-        description="Explicitly state what type the identifier is (use 'bibId' for AC-Numbers, PPNs, etc.)",
-        examples=["bibId", "barcode"]
+        description="Explicitly state what type the identifier is",
+        examples=["bibId", "barcode", "isbn"]
     )
     
     # optional direct bypass identifiers (if user already has them)
