@@ -67,8 +67,8 @@ ENRICHMENT_STRATEGIES = {
                         "isbn": "9783161484100",
                         "totalMatches": 2,
                         "candidates": [
-                            {"bibId": "AC12345678", "title": "Example Book (1st Ed)", "author": "John Doe", "publisher": "Academic Press", "year": "2010"},
-                            {"bibId": "AC12345679", "title": "Example Book (2nd Ed)", "author": "John Doe", "publisher": "Academic Press", "year": "2015"}
+                            {"bibId": "AC12345678", "title": "Example Book (1st Ed)", "author": "John Doe", "publishers": ["Academic Press"], "dates": ["2010"]},
+                            {"bibId": "AC12345679", "title": "Example Book (2nd Ed)", "author": "John Doe", "publisher": ["Academic Press"], "dates": ["2015"]}
                         ]
                     }
                 }
