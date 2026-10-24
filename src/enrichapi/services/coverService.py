@@ -1,111 +1,132 @@
-import httpx
 import logging
-import time
-from typing import Dict, Any, Optional
-from ..models.otherAPIs import BookCoverOpenLibrary
+from httpx import AsyncClient
+from ..models.cover import BookCoverData
+from ..models.envelope import EnrichmentEnvelope
 
 logger = logging.getLogger(__name__)
 
-
 class CoverService:
-    def __init__(self, httpClient: Optional[httpx.AsyncClient] = None):
-        self._client = httpClient
+    def __init__(self, client: AsyncClient):
+        self.client = client
 
-    async def fetchCover(
-        self, 
-        basicMarcMd: Dict[str, Any], 
-        bypassIsbn: Optional[str] = None,
-        imageSize: str = "M"
-    ) -> Dict[str, Any]:
+    async def fetchCover(self, basicMarcMd: dict, bypassIsbn: str | None = None, imageSize: str = "M") -> EnrichmentEnvelope[BookCoverData]:
         """
-        Extracts ISBN from basicMarc21MD (or uses bypassIsbn) and validates 
-        the Open Library cover image URL.
-        Returns a standardized EnrichmentEnvelope dictionary containing 
-        status, diagnostic message, and payload data.
+        Executes a robust 3-tier waterfall cover retrieval strategy:
+        1. Explicit bypassIsbn (if provided by request) or DNB lookup
+        2. Open Library Books API (via Cover ID extraction)
+        3. Google Books Volumes API (guarded final fallback)
         """
-        
-        # phase 1: pre-flight check - resolve ISBN (bypass > MARC21 extracted identifiers)
-        targetIsbn = bypassIsbn
-        sourceType = "bypassIsbn" if bypassIsbn else "MARC21 metadata"
-        
-        if not targetIsbn and basicMarcMd:
-            identifiers = basicMarcMd.get("identifier", [])
-            for item in identifiers:
-                if isinstance(item, dict) and item.get("idType") == "isbn":
-                    targetIsbn = item.get("value")
-                    if targetIsbn:
-                        break
+        # determine ISBN: prioritize explicit bypassIsbn, otherwise extract from MARC metadata
+        isbn = bypassIsbn or self._extractIsbn(basicMarcMd)
+        if not isbn:
+            logger.info("[CoverService] Skipped: No valid ISBN provided or found in MARC metadata.")
+            return EnrichmentEnvelope(
+                status="skipped",
+                message="No valid ISBN provided or found in MARC metadata for cover lookup",
+                data=None
+            )
 
-        if not targetIsbn:
-            logger.debug("[Cover] Skipped cover lookup: No valid ISBN provided or found in MARC metadata")
-            return {
-                "status": "skipped",
-                "message": "No valid ISBN provided or found in MARC metadata for cover lookup",
-                "data": None
-            }
+        cleanIsbn = isbn.replace("-", "").replace(" ", "").strip()
+        sizeUpper = imageSize.upper()
 
-        cleanIsbn = targetIsbn.replace("-", "").replace(" ", "")
-        logger.info(f"[Cover] Initiating cover check | isbn='{cleanIsbn}' size='{imageSize}' (source={sourceType})")
-
-        # phase 2: construct candidate URL model instance
-        coverModel = BookCoverOpenLibrary(isbn=cleanIsbn, imageSize=imageSize)
-        
-        if not coverModel.coverURL:
-            logger.warning(f"[Cover] Failed to generate valid candidate cover URL for ISBN '{cleanIsbn}'")
-            return {
-                "status": "error",
-                "message": f"Failed to construct valid cover URL for ISBN '{cleanIsbn}'",
-                "data": None
-            }
-
-        logger.debug(f"[Cover] Generated candidate cover URL: '{coverModel.coverURL}'")
-
-        # phase 3: validate image presence via async HEAD request (Open Library returns 404 if missing)
-        client = self._client or httpx.AsyncClient(timeout=5.0)
-        shouldClose = self._client is None
-        startTime = time.perf_counter()
-        
+        # tier 1: DNB cover endpoint (HEAD request for speed)
+        dnbUrl = f"https://portal.dnb.de/opac/mvb/cover?isbn={cleanIsbn}&size={sizeUpper.lower()}"
         try:
-            logger.debug(f"[Cover] Sending HEAD request to validate image existence at '{coverModel.coverURL}'...")
-            response = await client.head(coverModel.coverURL, follow_redirects=True)
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
+            res = await self.client.head(dnbUrl, timeout=2.5, follow_redirects=True)
+            if res.status_code == 200 and "image" in res.headers.get("content-type", ""):
+                logger.info(f"[CoverService] Success via DNB for ISBN '{cleanIsbn}'")
+                return EnrichmentEnvelope(
+                    status="success",
+                    message=f"Cover successfully retrieved from DNB for ISBN '{cleanIsbn}'",
+                    data=BookCoverData(
+                        isbn=cleanIsbn,
+                        imageSize=sizeUpper, # type: ignore
+                        coverURL=str(res.url),
+                        source="dnb"
+                    )
+                )
+        except Exception as e:
+            logger.debug(f"[CoverService] DNB check failed for ISBN '{cleanIsbn}': {e}")
 
-            if response.status_code == 200:
-                logger.info(f"[Cover] Valid cover image confirmed (HTTP 200) for ISBN '{cleanIsbn}' at '{coverModel.coverURL}' ({elapsedMs}ms)")
-                return {
-                    "status": "success",
-                    "message": f"Successfully validated cover image for ISBN '{cleanIsbn}'",
-                    "data": coverModel
-                }
-            else:
-                logger.info(f"[Cover] Cover image not found (HTTP {response.status_code}) for ISBN '{cleanIsbn}' ({elapsedMs}ms)")
-                return {
-                    "status": "not_found",
-                    "message": f"Cover image not found for ISBN '{cleanIsbn}' (HTTP {response.status_code})",
-                    "data": None
-                }
-        
-        except httpx.RequestError as exc:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            errorMsg = f"Network error validating cover URL for ISBN '{cleanIsbn}' ({elapsedMs}ms): {exc}"
-            logger.warning(f"[Cover] {errorMsg}")
-            return {
-                "status": "error",
-                "message": errorMsg,
-                "data": None
-            }
+        # tier 2: Open Library Books API (extracts cover id to bypass rate limits)
+        olBooksUrl = f"https://openlibrary.org/api/books?bibkeys=ISBN:{cleanIsbn}&format=json&jscmd=viewapi"
+        try:
+            res = await self.client.get(olBooksUrl, timeout=3.0)
+            if res.status_code == 200:
+                data = res.json()
+                key = f"ISBN:{cleanIsbn}"
+                if key in data and "thumbnail_url" in data[key]:
+                    rawThumbUrl = data[key]["thumbnail_url"]
+                    # Open Library returns URLs like .../b/id/12345-S.jpg
+                    # swap the size suffix to match requested size (-S, -M, -L)
+                    targetSuffix = f"-{sizeUpper}.jpg"
+                    if "-S.jpg" in rawThumbUrl:
+                        coverUrl = rawThumbUrl.replace("-S.jpg", targetSuffix)
+                    elif "-M.jpg" in rawThumbUrl:
+                        coverUrl = rawThumbUrl.replace("-M.jpg", targetSuffix)
+                    elif "-L.jpg" in rawThumbUrl:
+                        coverUrl = rawThumbUrl.replace("-L.jpg", targetSuffix)
+                    else:
+                        coverUrl = rawThumbUrl
 
-        except Exception as exc:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            errorMsg = f"Unexpected error validating cover URL for ISBN '{cleanIsbn}': {exc}"
-            logger.error(f"[Cover] {errorMsg} ({elapsedMs}ms)", exc_info=True)
-            return {
-                "status": "error",
-                "message": errorMsg,
-                "data": None
-            }
+                    logger.info(f"[CoverService] Success via Open Library for ISBN '{cleanIsbn}'")
+                    return EnrichmentEnvelope(
+                        status="success",
+                        message=f"Cover successfully retrieved from Open Library for ISBN '{cleanIsbn}'",
+                        data=BookCoverData(
+                            isbn=cleanIsbn,
+                            imageSize=sizeUpper, # type: ignore
+                            coverURL=coverUrl,
+                            source="open_library"
+                        )
+                    )
+        except Exception as e:
+            logger.debug(f"[CoverService] Open Library check failed for ISBN '{cleanIsbn}': {e}")
 
-        finally:
-            if shouldClose:
-                logger.debug("[Cover] Closing transient httpx.AsyncClient connection.")
-                await client.aclose()
+        # tier 3: Google Books Volumes API (guarded tertiary fallback)
+        googleUrl = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{cleanIsbn}"
+        try:
+            res = await self.client.get(googleUrl, timeout=2.5)
+            if res.status_code == 200:
+                data = res.json()
+                items = data.get("items", [])
+                if items:
+                    volume_info = items[0].get("volumeInfo", {})
+                    image_links = volume_info.get("imageLinks", {})
+                    imgUrl = image_links.get("thumbnail") or image_links.get("smallThumbnail")
+                    if imgUrl:
+                        if imgUrl.startswith("http://"):
+                            imgUrl = imgUrl.replace("http://", "https://", 1)
+                            
+                        logger.info(f"[CoverService] Success via Google Books for ISBN '{cleanIsbn}'")
+                        return EnrichmentEnvelope(
+                            status="success",
+                            message=f"Cover successfully retrieved from Google Books for ISBN '{cleanIsbn}'",
+                            data=BookCoverData(
+                                isbn=cleanIsbn,
+                                imageSize=sizeUpper, # type: ignore
+                                coverURL=imgUrl,
+                                source="google_books"
+                            )
+                        )
+        except Exception as e:
+            logger.debug(f"[CoverService] Google Books check skipped/failed for ISBN '{cleanIsbn}': {e}")
+
+        # step 4: all providers exhausted
+        logger.info(f"[CoverService] Not found: No cover available for ISBN '{cleanIsbn}' across all providers.")
+        return EnrichmentEnvelope(
+            status="not_found",
+            message=f"No cover image found for ISBN '{cleanIsbn}' across configured providers",
+            data=None
+        )
+
+    def _extractIsbn(self, basicMarcMd: dict) -> str | None:
+        """Helper to find the first valid ISBN from the MARC identifiers list."""
+        identifiers = basicMarcMd.get("identifier", [])
+        for item in identifiers:
+            idType = item.get("idType") if isinstance(item, dict) else getattr(item, "idType", None)
+            val = item.get("value") if isinstance(item, dict) else getattr(item, "value", None)
+            
+            if idType == "isbn" and val:
+                return val
+        return None

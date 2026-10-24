@@ -6,6 +6,7 @@ from .basicMarc21MD import BasicMarc21MD
 from .additionalRecsSRU import AdditionalRecsSRU
 from .lobidGND import DataLobidGND
 from .wikidata import DataWikidata
+from .cover import BookCoverData
 from .otherAPIs import BookCoverOpenLibrary, DescriptionGoogleBooks
 
 # =====================================================================
@@ -54,8 +55,8 @@ class BaseInstitutionResponse(BaseModel):
     wikidataData: EnrichmentEnvelope[DataWikidata] | None = Field(
         default=None, description="Data fetched via Wikidata SPARQL with execution diagnostics"
     )
-    bookCover: EnrichmentEnvelope[BookCoverOpenLibrary] | None = Field(
-        default=None, description="Book cover fetched via Open Library with execution diagnostics"
+    bookCover: EnrichmentEnvelope[BookCoverData] | None = Field(
+        default=None, description="Book cover fetched via waterfall providers with execution diagnostics"
     )
     bookDescription: EnrichmentEnvelope[DescriptionGoogleBooks] | None = Field(
         default=None, description="Description fetched via GoogleBooks with execution diagnostics"
