@@ -7,7 +7,7 @@ from .additionalRecsSRU import AdditionalRecsSRU
 from .lobidGND import DataLobidGND
 from .wikidata import DataWikidata
 from .cover import BookCoverData
-from .otherAPIs import BookCoverOpenLibrary, DescriptionGoogleBooks
+from .abstract import BookDescriptionData
 
 # =====================================================================
 # SPECIAL SCHEMAS: Ambiguity Contract for ISBN (HTTP 300)
@@ -56,10 +56,10 @@ class BaseInstitutionResponse(BaseModel):
         default=None, description="Data fetched via Wikidata SPARQL with execution diagnostics"
     )
     bookCover: EnrichmentEnvelope[BookCoverData] | None = Field(
-        default=None, description="Book cover fetched via waterfall providers with execution diagnostics"
+        default=None, description="Book cover fetched via waterfall providers"
     )
-    bookDescription: EnrichmentEnvelope[DescriptionGoogleBooks] | None = Field(
-        default=None, description="Description fetched via GoogleBooks with execution diagnostics"
+    bookDescription: EnrichmentEnvelope[BookDescriptionData] | None = Field(
+        default=None, description="Description fetched via waterfall providers"
     )
 
 class OenbResponse(BaseInstitutionResponse):

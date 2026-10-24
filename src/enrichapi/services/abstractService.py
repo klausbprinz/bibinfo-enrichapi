@@ -1,205 +1,140 @@
-import httpx
 import logging
-import time
-from typing import Dict, Any, Optional
-from ..models.otherAPIs import DescriptionGoogleBooks
+from httpx import AsyncClient
+from ..models.abstract import BookDescriptionData
+from ..models.envelope import EnrichmentEnvelope
 
 logger = logging.getLogger(__name__)
 
 class AbstractService:
-    def __init__(self, httpClient: Optional[httpx.AsyncClient] = None, googleApiKey: Optional[str] = None):
-        self._client = httpClient
+    def __init__(self, client: AsyncClient, googleApiKey: str | None = None):
+        self.client = client
         self.googleApiKey = googleApiKey
 
-    async def fetchDescription(
-        self, 
-        basicMarcMd: Dict[str, Any], 
-        bypassIsbn: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def fetchDescription(self, basicMarcMd: dict, bypassIsbn: str | None = None) -> EnrichmentEnvelope[BookDescriptionData]:
         """
-        Fetches book description using Google Books API with an automatic 
-        fallback to Open Library's Works API.
-        Returns a standardized EnrichmentEnvelope dictionary containing 
-        status, diagnostic message, and payload data.
+        Executes a robust, time-bounded multi-source waterfall description retrieval strategy:
+        1. Google Books API (Fast ISBN lookup with optional API key & strict timeout)
+        2. Open Library Works API (ISBN -> Work key -> Description with strict timeout)
+        3. Wikipedia REST API (Fallback using Title from MARC21 metadata against german wikipedia)
+        4. Exhausted
         """
-        
-        # phase 1: pre-flight check - extract ISBN (bypass > MARC21 metadata)
-        targetIsbn = bypassIsbn
-        sourceType = "bypassIsbn" if bypassIsbn else "MARC21 metadata"
+        isbn = bypassIsbn or self._extractIsbn(basicMarcMd)
+        cleanIsbn = isbn.replace("-", "").replace(" ", "").strip() if isbn else None
 
-        if not targetIsbn and basicMarcMd:
-            identifiers = basicMarcMd.get("identifier", [])
-            for item in identifiers:
-                if isinstance(item, dict) and item.get("idType") == "isbn":
-                    targetIsbn = item.get("value")
-                    if targetIsbn:
-                        break
+        logger.info(f"[AbstractService] Initiating description lookup | isbn='{cleanIsbn}'")
 
-        if not targetIsbn:
-            logger.debug("[Abstract] Skipped description lookup: No valid ISBN provided or found in metadata")
-            return {
-                "status": "skipped",
-                "message": "No valid ISBN provided or found in metadata for description lookup",
-                "data": None
-            }
+        # tier 1: Google Books API (ISBN lookup)
+        if cleanIsbn:
+            googleUrl = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{cleanIsbn}"
+            if self.googleApiKey:
+                googleUrl += f"&key={self.googleApiKey}"
+                logger.debug("[AbstractService] Appended Google API Key to Google Books description request.")
 
-        cleanIsbn = targetIsbn.replace("-", "").replace(" ", "")
-        logger.info(f"[Abstract] Initiating description lookup | isbn='{cleanIsbn}' (source={sourceType})")
-
-        client = self._client or httpx.AsyncClient(timeout=7.0)
-        shouldClose = self._client is None
-        startTime = time.perf_counter()
-
-        try:
-            # phase 2: execute primary strategy (Google Books API)
-            logger.info(f"[Abstract] Attempting Primary Strategy: Google Books API for ISBN '{cleanIsbn}'...")
-            description = await self._fetchFromGoogleBooks(client, cleanIsbn)
-            
-            # fallback strategy: Open Library API (if Google returns nothing)
-            if not description:
-                logger.info(f"[Abstract] Google Books yielded no result. Attempting Fallback Strategy: Open Library API for ISBN '{cleanIsbn}'...")
-                description = await self._fetchFromOpenLibrary(client, cleanIsbn)
-
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-
-            # phase 3: evaluate result and wrap in appropriate status envelope
-            if description:
-                logger.info(f"[Abstract] Successfully retrieved book description for ISBN '{cleanIsbn}' ({len(description)} chars) ({elapsedMs}ms)")
-                validatedModel = DescriptionGoogleBooks(description=description)
-                return {
-                    "status": "success",
-                    "message": f"Successfully retrieved book description for ISBN '{cleanIsbn}'",
-                    "data": validatedModel
-                }
-
-            logger.info(f"[Abstract] No description found on both Google Books and Open Library for ISBN '{cleanIsbn}' ({elapsedMs}ms)")
-            return {
-                "status": "not_found",
-                "message": f"No book description found for ISBN '{cleanIsbn}' in external sources",
-                "data": None
-            }
-
-        except httpx.HTTPError as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            errorMsg = f"Network or HTTP error during description fetch for ISBN '{cleanIsbn}': {e}"
-            logger.warning(f"[Abstract] {errorMsg} ({elapsedMs}ms)")
-            return {
-                "status": "error",
-                "message": errorMsg,
-                "data": None
-            }
-
-        except Exception as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            errorMsg = f"Unexpected error during description fetch for ISBN '{cleanIsbn}': {e}"
-            logger.error(f"[Abstract] {errorMsg} ({elapsedMs}ms)", exc_info=True)
-            return {
-                "status": "error",
-                "message": errorMsg,
-                "data": None
-            }
-
-        finally:
-            if shouldClose:
-                logger.debug("[Abstract] Closing transient httpx.AsyncClient connection.")
-                await client.aclose()
-
-    async def _fetchFromGoogleBooks(self, client: httpx.AsyncClient, isbn: str) -> Optional[str]:
-        url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
-        if self.googleApiKey:
-            url += f"&key={self.googleApiKey}"
-            logger.debug("[Abstract] Appended Google API Key to Google Books request URL.")
-
-        startTime = time.perf_counter()
-        try:
-            res = await client.get(url)
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-
-            if res.status_code == 200:
-                data = res.json()
-                items = data.get("items")
-                if isinstance(items, list) and len(items) > 0:
-                    volumeInfo = items[0].get("volumeInfo")
-                    if isinstance(volumeInfo, dict):
-                        desc = volumeInfo.get("description")
+            try:
+                res = await self.client.get(googleUrl, timeout=2.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    items = data.get("items", [])
+                    if items:
+                        desc = items[0].get("volumeInfo", {}).get("description")
                         if desc:
-                            logger.info(f"[Abstract] [Google Books] Found description for ISBN '{isbn}' ({len(desc)} chars) ({elapsedMs}ms)")
-                            return desc
-                        else:
-                            logger.info(f"[Abstract] [Google Books] Volume found for ISBN '{isbn}' but lacks description field ({elapsedMs}ms)")
-                            return None
-                
-                logger.info(f"[Abstract] [Google Books] Zero volumes matched ISBN '{isbn}' (totalItems={data.get('totalItems', 0)}) ({elapsedMs}ms)")
-            else:
-                logger.warning(f"[Abstract] [Google Books] HTTP {res.status_code} response for ISBN '{isbn}' ({elapsedMs}ms)")
-                
-        except httpx.HTTPError as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.warning(f"[Abstract] [Google Books] Request failed for ISBN '{isbn}' ({elapsedMs}ms): {e}")
-
-        except Exception as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.error(f"[Abstract] [Google Books] Unexpected error parsing response for ISBN '{isbn}' ({elapsedMs}ms): {e}", exc_info=True)
-            
-        return None
-    
-
-    async def _fetchFromOpenLibrary(self, client: httpx.AsyncClient, isbn: str) -> Optional[str]:
-        startTime = time.perf_counter()
-        try:
-            # get work key via ISBN endpoint
-            isbnUrl = f"https://openlibrary.org/isbn/{isbn}.json"
-            res = await client.get(isbnUrl, follow_redirects=True)
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-
-            if res.status_code != 200:
-                logger.info(f"[Abstract] [Open Library] ISBN lookup returned HTTP {res.status_code} for ISBN '{isbn}' ({elapsedMs}ms)")
-                return None
-
-            data = res.json()
-            works = data.get("works", [])
-            if not works:
-                logger.info(f"[Abstract] [Open Library] No linked works array found in edition metadata for ISBN '{isbn}' ({elapsedMs}ms)")
-                return None
-
-            workKey = works[0].get("key")  # e.g. "/works/OL45804W"
-            if not workKey:
-                logger.warning(f"[Abstract] [Open Library] Work entry missing 'key' property for ISBN '{isbn}' ({elapsedMs}ms)")
-                return None
-
-            logger.debug(f"[Abstract] [Open Library] Resolved work key '{workKey}' for ISBN '{isbn}'. Requesting work details...")
-
-            # get work details
-            workUrl = f"https://openlibrary.org{workKey}.json"
-            workStartTime = time.perf_counter()
-            workRes = await client.get(workUrl)
-            workElapsedMs = round((time.perf_counter() - workStartTime) * 1000, 2)
-
-            if workRes.status_code == 200:
-                workData = workRes.json()
-                descField = workData.get("description")
-                
-                # Open Library description can be str or dict {"type": "...", "value": "..."}
-                resultDesc = None
-                if isinstance(descField, str):
-                    resultDesc = descField
-                elif isinstance(descField, dict):
-                    resultDesc = descField.get("value")
-
-                if resultDesc:
-                    logger.info(f"[Abstract] [Open Library] Found description via workKey '{workKey}' for ISBN '{isbn}' ({len(resultDesc)} chars) ({workElapsedMs}ms)")
-                    return resultDesc
+                            logger.info(f"[AbstractService] Success via Google Books for ISBN '{cleanIsbn}'")
+                            return EnrichmentEnvelope(
+                                status="success",
+                                message=f"Description successfully retrieved from Google Books for ISBN '{cleanIsbn}'",
+                                data=BookDescriptionData(
+                                    isbn=cleanIsbn,
+                                    description=desc,
+                                    source="google_books"
+                                )
+                            )
                 else:
-                    logger.info(f"[Abstract] [Open Library] Work '{workKey}' found for ISBN '{isbn}' but contains no description ({workElapsedMs}ms)")
-            else:
-                logger.warning(f"[Abstract] [Open Library] Work details request for '{workKey}' failed with HTTP {workRes.status_code} ({workElapsedMs}ms)")
+                    logger.debug(f"[AbstractService] Google Books returned HTTP {res.status_code} for ISBN '{cleanIsbn}'")
+            except Exception as e:
+                logger.debug(f"[AbstractService] Google Books description check failed/timed out: {e}")
 
-        except httpx.HTTPError as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.warning(f"[Abstract] [Open Library] Request failed for ISBN '{isbn}' ({elapsedMs}ms): {e}")
+        # tier 2: Open Library Works API (ISBN -> work key -> description)
+        if cleanIsbn:
+            try:
+                isbnUrl = f"https://openlibrary.org/isbn/{cleanIsbn}.json"
+                res = await self.client.get(isbnUrl, timeout=2.0, follow_redirects=True)
+                if res.status_code == 200:
+                    works = res.json().get("works", [])
+                    if works and "key" in works[0]:
+                        workKey = works[0]["key"] # e.g. /works/OL45804W
+                        workUrl = f"https://openlibrary.org{workKey}.json"
+                        workRes = await self.client.get(workUrl, timeout=2.0)
+                        if workRes.status_code == 200:
+                            descField = workRes.json().get("description")
+                            desc = descField.get("value") if isinstance(descField, dict) else descField
+                            if desc:
+                                logger.info(f"[AbstractService] Success via Open Library for ISBN '{cleanIsbn}'")
+                                return EnrichmentEnvelope(
+                                    status="success",
+                                    message=f"Description successfully retrieved from Open Library for ISBN '{cleanIsbn}'",
+                                    data=BookDescriptionData(
+                                        isbn=cleanIsbn,
+                                        description=desc,
+                                        source="open_library"
+                                    )
+                                )
+            except Exception as e:
+                logger.debug(f"[AbstractService] Open Library description check failed/timed out: {e}")
 
-        except Exception as e:
-            elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.error(f"[Abstract] [Open Library] Unexpected error parsing response for ISBN '{isbn}' ({elapsedMs}ms): {e}", exc_info=True)
+        # tier 3: Wikipedia REST API (fallback using title from marc21md - german wikipedia)
+        title = self._extractTitle(basicMarcMd)
 
+        if title:
+            wikiQuery = title.strip()
+            headers = {
+                "User-Agent": "BibliographicEnrichmentAPI/1.0 (https://github.com/klausbprinz/bibinfo-enrichapi; klaus_prinz@gmx.net)"
+            }
+            try:
+                searchUrl = f"https://de.wikipedia.org/w/api.php?action=opensearch&search={wikiQuery}&limit=1&namespace=0&format=json"
+                searchRes = await self.client.get(searchUrl, headers=headers, timeout=2.0)
+                
+                if searchRes.status_code == 200:
+                    jsonRes = searchRes.json()
+                    titles = jsonRes[1] if len(jsonRes) > 1 else []
+                    if titles:
+                        pageTitle = titles[0]
+                        summaryUrl = f"https://de.wikipedia.org/api/rest_v1/page/summary/{pageTitle}"
+                        summaryRes = await self.client.get(summaryUrl, headers=headers, timeout=2.0)
+                        
+                        if summaryRes.status_code == 200:
+                            extract = summaryRes.json().get("extract")
+                            if extract:
+                                logger.info(f"[AbstractService] Success via Wikipedia for query '{wikiQuery}' (Page: '{pageTitle}')")
+                                return EnrichmentEnvelope(
+                                    status="success",
+                                    message=f"Description successfully retrieved from Wikipedia for '{pageTitle}'",
+                                    data=BookDescriptionData(
+                                        isbn=cleanIsbn,
+                                        description=extract,
+                                        source="wikipedia"
+                                    )
+                                )
+            except Exception as e:
+                logger.debug(f"[AbstractService] Wikipedia description check failed/timed out: {e}")
+
+        # tier 4: exhausted
+        logger.info(f"[AbstractService] Not found: No description available across providers.")
+        return EnrichmentEnvelope(
+            status="not_found",
+            message="No book description found across configured providers",
+            data=None
+        )
+
+    def _extractIsbn(self, basicMarcMd: dict) -> str | None:
+        for item in basicMarcMd.get("identifier", []):
+            if isinstance(item, dict) and item.get("idType") == "isbn" and item.get("value"):
+                return item["value"]
         return None
+
+    def _extractTitle(self, basicMarcMd: dict) -> str | None:
+        titleObj = basicMarcMd.get("title", {})
+        return titleObj.get("titleMain") if isinstance(titleObj, dict) else None
+
+    def _extractAuthor(self, basicMarcMd: dict) -> str | None:
+        mainEntry = basicMarcMd.get("mainEntry", {})
+        return mainEntry.get("name") if isinstance(mainEntry, dict) else None
