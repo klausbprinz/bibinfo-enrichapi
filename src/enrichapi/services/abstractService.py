@@ -12,11 +12,10 @@ class AbstractService:
 
     async def fetchDescription(self, basicMarcMd: dict, bypassIsbn: str | None = None) -> EnrichmentEnvelope[BookDescriptionData]:
         """
-        Executes a robust, time-bounded multi-source waterfall description retrieval strategy:
+        Executes a robust, time-bounded 2-tier ISBN-backed description retrieval strategy:
         1. Google Books API (Fast ISBN lookup with optional API key & strict timeout)
         2. Open Library Works API (ISBN -> Work key -> Description with strict timeout)
-        3. Wikipedia REST API (Fallback using Title from MARC21 metadata against german wikipedia)
-        4. Exhausted
+        3. Exhausted
         """
         isbn = bypassIsbn or self._extractIsbn(basicMarcMd)
         cleanIsbn = isbn.replace("-", "").replace(" ", "").strip() if isbn else None
@@ -53,7 +52,9 @@ class AbstractService:
             except Exception as e:
                 logger.debug(f"[AbstractService] Google Books description check failed/timed out: {e}")
 
+        # ------------------------------------------------------------------
         # tier 2: Open Library Works API (ISBN -> work key -> description)
+        # ------------------------------------------------------------------
         if cleanIsbn:
             try:
                 isbnUrl = f"https://openlibrary.org/isbn/{cleanIsbn}.json"
@@ -81,43 +82,7 @@ class AbstractService:
             except Exception as e:
                 logger.debug(f"[AbstractService] Open Library description check failed/timed out: {e}")
 
-        # tier 3: Wikipedia REST API (fallback using title from marc21md - german wikipedia)
-        title = self._extractTitle(basicMarcMd)
-
-        if title:
-            wikiQuery = title.strip()
-            headers = {
-                "User-Agent": "BibliographicEnrichmentAPI/1.0 (https://github.com/klausbprinz/bibinfo-enrichapi; klaus_prinz@gmx.net)"
-            }
-            try:
-                searchUrl = f"https://de.wikipedia.org/w/api.php?action=opensearch&search={wikiQuery}&limit=1&namespace=0&format=json"
-                searchRes = await self.client.get(searchUrl, headers=headers, timeout=2.0)
-                
-                if searchRes.status_code == 200:
-                    jsonRes = searchRes.json()
-                    titles = jsonRes[1] if len(jsonRes) > 1 else []
-                    if titles:
-                        pageTitle = titles[0]
-                        summaryUrl = f"https://de.wikipedia.org/api/rest_v1/page/summary/{pageTitle}"
-                        summaryRes = await self.client.get(summaryUrl, headers=headers, timeout=2.0)
-                        
-                        if summaryRes.status_code == 200:
-                            extract = summaryRes.json().get("extract")
-                            if extract:
-                                logger.info(f"[AbstractService] Success via Wikipedia for query '{wikiQuery}' (Page: '{pageTitle}')")
-                                return EnrichmentEnvelope(
-                                    status="success",
-                                    message=f"Description successfully retrieved from Wikipedia for '{pageTitle}'",
-                                    data=BookDescriptionData(
-                                        isbn=cleanIsbn,
-                                        description=extract,
-                                        source="wikipedia"
-                                    )
-                                )
-            except Exception as e:
-                logger.debug(f"[AbstractService] Wikipedia description check failed/timed out: {e}")
-
-        # tier 4: exhausted
+        # tier 3: exhausted
         logger.info(f"[AbstractService] Not found: No description available across providers.")
         return EnrichmentEnvelope(
             status="not_found",
@@ -130,11 +95,3 @@ class AbstractService:
             if isinstance(item, dict) and item.get("idType") == "isbn" and item.get("value"):
                 return item["value"]
         return None
-
-    def _extractTitle(self, basicMarcMd: dict) -> str | None:
-        titleObj = basicMarcMd.get("title", {})
-        return titleObj.get("titleMain") if isinstance(titleObj, dict) else None
-
-    def _extractAuthor(self, basicMarcMd: dict) -> str | None:
-        mainEntry = basicMarcMd.get("mainEntry", {})
-        return mainEntry.get("name") if isinstance(mainEntry, dict) else None
