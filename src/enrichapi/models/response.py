@@ -8,6 +8,25 @@ from .lobidGND import DataLobidGND
 from .wikidata import DataWikidata
 from .otherAPIs import BookCoverOpenLibrary, DescriptionGoogleBooks
 
+# =====================================================================
+# SPECIAL SCHEMAS: Ambiguity Contract for ISBN (HTTP 300)
+# =====================================================================
+
+class IsbnCandidate(BaseModel):
+    """Represents a single edition option when an ISBN match is ambiguous."""
+    bibId: str | None = Field(default=None, description="System record identifier (bibId)")
+    title: str | None = Field(default=None, description="Title of this specific edition")
+    author: str | None = Field(default=None, description="Main author or creator")
+    publisher: str | None = Field(default=None, description="Publisher details")
+    year: str | None = Field(default=None, description="Publication year")
+
+
+class IsbnAmbiguityResponse(BaseModel):
+    """Returned on HTTP 300 when an ISBN matches multiple editions."""
+    status: Literal["ambiguous_isbn"] = "ambiguous_isbn"
+    isbn: str = Field(description="The ISBN that triggered the ambiguity")
+    totalMatches: int = Field(description="Total number of matching records found")
+    candidates: list[IsbnCandidate] = Field(description="List of matching catalog candidates")
 
 # =====================================================================
 # LEVEL 1: Institutional Schemas
