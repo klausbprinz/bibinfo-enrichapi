@@ -181,50 +181,48 @@ def extractClassificationNumbers(marcRecord: etree._Element) -> list[dict]:
 
     return fieldDataList
 
-def extractFullTextURLs(marcRecord: etree._Element) -> list[str]:
-    ftuList = []
+def extractElectronicLocations(marcRecord: etree._Element) -> list[dict]:
+    """Extracts all 856 electronic locations with their indicators, $$3, and $$z notes."""
+    locations = []
 
     for df856Elem in marcRecord.findall('marc:datafield[@tag="856"]', namespaces=nsMap):
-        sf3 = df856Elem.find('marc:subfield[@code="3"]', namespaces=nsMap)
         sfu = df856Elem.find('marc:subfield[@code="u"]', namespaces=nsMap)
-
         if sfu is None or not sfu.text or not sfu.text.strip():
             continue
 
-        # clean text values
-        sf3Text = sf3.text.strip() if (sf3 is not None and sf3.text) else ""
         url = sfu.text.strip()
+        
+        # extract second indicator (relationship context), defaulting blank spaces to '#'
+        ind2 = df856Elem.attrib.get("ind2", "#")
+        relationshipIndicator = ind2 if ind2 and ind2 != " " else "#"
 
-        # check for 'Volltext' in subfield $3 (case-insensitive & whitespace trimmed)
-        if "volltext" in sf3Text.lower():
-            ftuList.append(url)
+        # extract subfield $$3 (specified materials, e.g., 'Volltext', 'Inhaltsverzeichnis')
+        sf3 = df856Elem.find('marc:subfield[@code="3"]', namespaces=nsMap)
+        materialsSpecified = sf3.text.strip() if (sf3 is not None and sf3.text) else None
 
-    # return deduplicated list while preserving order
-    return list(dict.fromkeys(ftuList))
+        # extract repeating subfield $$z (Public notes)
+        sfzList = df856Elem.findall('marc:subfield[@code="z"]', namespaces=nsMap)
+        publicNotes = [sfz.text.strip() for sfz in sfzList if sfz.text and sfz.text.strip()]
+
+        locations.append({
+            "url": url,
+            "materialsSpecified": materialsSpecified,
+            "publicNotes": publicNotes,
+            "relationshipIndicator": relationshipIndicator
+        })
+
+    # deduplicate based on URL while preserving order
+    seenUrls = set()
+    uniqueLocations = []
+    for loc in locations:
+        if loc["url"] not in seenUrls:
+            seenUrls.add(loc["url"])
+            uniqueLocations.append(loc)
+
+    return uniqueLocations
 
 def extractAbstracts(marcRecord: etree._Element) -> list[str]:
     return extractSubfieldsList(marcRecord, "520", "a")
-
-def extractTableOfContentURLs(marcRecord: etree._Element) -> list[str]:
-    tocList = []
-
-    for df856Elem in marcRecord.findall('marc:datafield[@tag="856"]', namespaces=nsMap):
-        sf3 = df856Elem.find('marc:subfield[@code="3"]', namespaces=nsMap)
-        sfu = df856Elem.find('marc:subfield[@code="u"]', namespaces=nsMap)
-
-        if sfu is None or not sfu.text or not sfu.text.strip():
-            continue
-
-        # clean text values
-        sf3Text = sf3.text.strip() if (sf3 is not None and sf3.text) else ""
-        url = sfu.text.strip()
-
-        # check for 'Inhaltsverzeichnis' in subfield $3 (case-insensitive & whitespace trimmed)
-        if "inhaltsverzeichnis" in sf3Text.lower():
-            tocList.append(url)
-
-    # return deduplicated list while preserving order
-    return list(dict.fromkeys(tocList))
 
 def extractIdentifier(marcRecord: etree._Element) -> list[dict]:
     fieldDataList = []

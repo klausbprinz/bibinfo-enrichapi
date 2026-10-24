@@ -19,6 +19,7 @@ from ..models.basicMarc21MD import (
     Marc21MdPublicationNotice,
     Marc21MdClassificationNumber,
     Marc21MdIdentifier,
+    Marc21MdElectronicLocation,
     Marc21MdItemInfos,
     Marc21MdHoldingInfos
 )
@@ -241,6 +242,13 @@ class SruService:
         ]
         logger.debug(f"[SRU] Extracted {len(identifierModels)} record identifiers.")
 
+        # extract electronic locations
+        electronicLocationModels = [
+            Marc21MdElectronicLocation(**d) 
+            for d in parse.extractElectronicLocations(marcRecord)
+        ]
+        logger.debug(f"[SRU] Extracted {len(electronicLocationModels)} electronic location entries.")
+
         # extract holdings and items
         holdingModels = [
             Marc21MdHoldingInfos(**d)
@@ -273,9 +281,8 @@ class SruService:
             classifications=classificationModels,
             bibMaterialType=parse.extractBibMaterialType(marcRecord),
             bibResourceType=parse.extractBibResourceType(marcRecord),
-            fullTextURLs=parse.extractFullTextURLs(marcRecord),
+            electronicLocations=electronicLocationModels,
             abstracts=parse.extractAbstracts(marcRecord),
-            tableOfContentURLs=parse.extractTableOfContentURLs(marcRecord),
             identifier=identifierModels,
             holdingInfos=holdingModels
         )

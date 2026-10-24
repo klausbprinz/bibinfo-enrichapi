@@ -51,6 +51,15 @@ class Marc21MdIdentifier(BaseModel):
     prefix: str | None = Field(default=None, description="Prefix of Identifier, e.g. '(AT-OBV)' in 035a")
     additionalInfos: list[str] = Field(default_factory=list, description="Explanatory information, e.g. ISBN (024q R)")
 
+class Marc21MdElectronicLocation(BaseModel):
+    url: str | None = Field(default=None, description="Uniform Resource Identifier (856u NR)")
+    materialsSpecified: str | None = Field(default=None, description="Specified materials, e.g., 'Volltext', 'Inhaltsverzeichnis' (8563 NR)")
+    publicNotes: list[str] = Field(default_factory=list, description="Public notes/descriptions (856z R)")
+    relationshipIndicator: Literal["0", "1", "2", "#"] | None = Field(
+        default=None, 
+        description="Second indicator (Relationship): '0'=Resource (Medium), '1'=Version, '2'=Related medium, '#'=No information"
+    )
+
 class Marc21MdItemInfos(BaseModel):
 
     numOfItems: int | None = Field(default=None, description="Number of Items (AVAf NR)")
@@ -82,9 +91,8 @@ class BasicMarc21MD(BaseModel):
     classifications: list[Marc21MdClassificationNumber] = Field(default_factory=list, description="Classification Number: DDC or other (082/084)")
     bibMaterialType: str = Field(default="other", description="Mapping from leader")
     bibResourceType: str = Field(default="other", description="Mapping from leader and 008")
-    fullTextURLs: list[str] = Field(default_factory=list, description="Full text URLs (856u if 8563 == 'Volltext')")
+    electronicLocations: list[Marc21MdElectronicLocation] = Field(default_factory=list, description="URLs (856)")
     abstracts: list[str] = Field(default_factory=list, description="Summary, etc. 520a")
-    tableOfContentURLs: list[str] = Field(default_factory=list, description="Table of content URLs (856u if 8563 == 'Inhaltsverzeichnis')")
     identifier: list[Marc21MdIdentifier] = Field(default_factory=list, description="Identifier and additional infos (035a, 020a, 022a, 024a)")
     holdingInfos: list[Marc21MdHoldingInfos] = Field(default_factory=list, description="Holding Information: Lib, Loc, CN (AVA R)")
 
