@@ -35,6 +35,7 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
         extractedWikidata: str | None = data.wikidataId
         
         marcData = None
+        warnings = []
 
         # fetch core MARC21 record sequentially if requested and identifiers exist
         if data.fetchMarc21MD and data.identifier and data.identifierType:
@@ -44,7 +45,7 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
             )
             marcStartTime = time.perf_counter()
             try:
-                marcXml = await sruService.fetchRecord(data.identifier, data.identifierType)
+                marcXml, warnings = await sruService.fetchRecord(data.identifier, data.identifierType)
                 
                 if marcXml is not None:
                     marcData = sruService.extractMarc21Metadata(marcXml)
@@ -175,6 +176,7 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
         return OenbResponse(
             identifier=data.identifier,
             identifierType=data.identifierType,
+            diagnostics=warnings if warnings else None,
             basicMarc21MD=marcData,
             additionalRecsSRU=additionalRecs,
             gndInfoLobid=lobidRes,

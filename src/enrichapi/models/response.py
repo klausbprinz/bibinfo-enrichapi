@@ -20,6 +20,11 @@ class BaseInstitutionResponse(BaseModel):
         default=None, description="System identifier (e.g., Barcode or Bib Identifier)"
     )
 
+    # new: diagnostics field for tracking data anomalies, warnings, or collisions
+    diagnostics: list[str] | None = Field(
+        default=None, description="Execution warnings, data anomalies, or collision notes"
+    )
+
     basicMarc21MD: BasicMarc21MD | None = Field(default=None, description="Basic Marc21 metadata")
     additionalRecsSRU: AdditionalRecsSRU | None = Field(default=None, description="Similar Records via SRU")
 

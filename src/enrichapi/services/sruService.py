@@ -42,12 +42,11 @@ class SruService:
             "marc": "http://www.loc.gov/MARC21/slim"
         }
 
-    async def fetchRecord(self, identifier: str, idType: str) -> etree._Element | None:
-        """Handles the HTTP lifecycle and parses raw XML into an lxml tree element."""
+    async def fetchRecord(self, identifier: str, idType: str) -> tuple[etree._Element | None, list[str]]:
+        """Handles the HTTP lifecycle, applies strict vs. pragmatic resolution rules, and returns raw XML with warnings."""
         cleanId = identifier.strip()
         safeId = quote(cleanId, safe="")
         
-        # no double quotes around safeId -> try this now..
         query = (
             f'alma.barcode={safeId}' 
             if idType == "barcode" 
@@ -59,6 +58,8 @@ class SruService:
         logger.info(f"[SRU] Initiating primary record fetch | id='{cleanId}' type='{idType}' query='{query}'")
         startTime = time.perf_counter()
 
+        warnings: list[str] = []
+
         try:
             res = await self.client.get(url)
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
@@ -66,28 +67,46 @@ class SruService:
             
             sruRoot = etree.fromstring(res.content)
             recordElems = sruRoot.findall(".//srw:record", namespaces=self.ns)
+            count = len(recordElems)
             
-            if len(recordElems) == 1:
-                logger.info(f"[SRU] Successfully fetched and matched primary MARC21 record for '{cleanId}' ({elapsedMs}ms)")
-                return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns)
-            elif len(recordElems) == 0:
-                logger.warning(f"[SRU] No records found for identifier '{cleanId}' (query='{query}') ({elapsedMs}ms)")
-            else:
-                logger.warning(f"[SRU] Multiple records ({len(recordElems)}) returned for unique id '{cleanId}' ({elapsedMs}ms)")
-                
-            return None
+            # rule 1: strict system ids (bibId/ac)
+            if idType in ("bibId", "ac"):
+                if count == 1:
+                    logger.info(f"[SRU] Successfully fetched and matched primary MARC21 record for '{cleanId}' ({elapsedMs}ms)")
+                    return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns), warnings
+                elif count == 0:
+                    logger.warning(f"[SRU] No records found for system identifier '{cleanId}' (query='{query}') ({elapsedMs}ms)")
+                else:
+                    logger.warning(f"[SRU] Strict system ID collision: Multiple records ({count}) returned for unique id '{cleanId}' ({elapsedMs}ms). Treating as 404.")
+                return None, warnings
+
+            # rule 2: pragmatic barcodes
+            elif idType == "barcode":
+                if count == 1:
+                    logger.info(f"[SRU] Successfully fetched and matched primary MARC21 record for barcode '{cleanId}' ({elapsedMs}ms)")
+                    return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns), warnings
+                elif count == 0:
+                    logger.warning(f"[SRU] No records found for barcode '{cleanId}' (query='{query}') ({elapsedMs}ms)")
+                    return None, warnings
+                else:
+                    warningMsg = f"Barcode collision detected: '{cleanId}' matched {count} catalog records. Automatically selected the first record."
+                    logger.warning(f"[SRU] {warningMsg} ({elapsedMs}ms)")
+                    warnings.append(warningMsg)
+                    return recordElems[0].find("srw:recordData/marc:record", namespaces=self.ns), warnings
+
+            return None, warnings
 
         except httpx.TimeoutException:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             logger.error(f"[SRU] Timeout after {elapsedMs}ms connecting to SRU server for query: {query}")
-            return None
+            return None, warnings
         except httpx.HTTPError as exc:
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
-            logger.error(f"[SRU] HTTP status error ({exc.response.status_code if hasattr(exc, 'response') else 'N/A'}) fetching query='{query}' ({elapsedMs}ms)", exc_info=True)
-            return None
+            logger.error(f"[SRU] HTTP status error fetching query='{query}' ({elapsedMs}ms)", exc_info=True)
+            return None, warnings
         except etree.XMLSyntaxError as exc:
             logger.error(f"[SRU] Failed to parse XML response for query='{query}': {exc}", exc_info=True)
-            return None
+            return None, warnings
 
     
     def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
