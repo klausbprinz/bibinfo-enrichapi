@@ -8,3 +8,6 @@ dependencies:
   - lxml
   - python=3.13
   - pydantic
+  - pytest-cov
+  - pdoc
+  - python-dotenv
