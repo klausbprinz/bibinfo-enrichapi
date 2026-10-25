@@ -2,9 +2,9 @@
   "$defs": {
     "AdditionalRec": {
       "properties": {
-        "ac": {
-          "description": "AC/009 identifier of additional record",
-          "title": "Ac",
+        "bibId": {
+          "description": "Primary bibliographic identifier (e.g., AC number, PPN)",
+          "title": "Bibid",
           "type": "string"
         },
         "titleMain": {
@@ -45,51 +45,10 @@
         }
       },
       "required": [
-        "ac",
+        "bibId",
         "titleMain"
       ],
       "title": "AdditionalRec",
-      "type": "object"
-    },
-    "AdditionalRecsByAuthor": {
-      "properties": {
-        "searchType": {
-          "const": "author",
-          "default": "author",
-          "title": "Searchtype",
-          "type": "string"
-        },
-        "name": {
-          "description": "Author name to search via SRU",
-          "title": "Name",
-          "type": "string"
-        },
-        "maxRecs": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Maximum number of additional records",
-          "title": "Maxrecs"
-        },
-        "additionalRecs": {
-          "description": "Additional records",
-          "items": {
-            "$ref": "#/$defs/AdditionalRec"
-          },
-          "title": "Additionalrecs",
-          "type": "array"
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "title": "AdditionalRecsByAuthor",
       "type": "object"
     },
     "AdditionalRecsByClassification": {
@@ -134,6 +93,47 @@
         "classifications"
       ],
       "title": "AdditionalRecsByClassification",
+      "type": "object"
+    },
+    "AdditionalRecsByPerson": {
+      "properties": {
+        "searchType": {
+          "const": "person",
+          "default": "person",
+          "title": "Searchtype",
+          "type": "string"
+        },
+        "name": {
+          "description": "Person name to search via SRU",
+          "title": "Name",
+          "type": "string"
+        },
+        "maxRecs": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of additional records",
+          "title": "Maxrecs"
+        },
+        "additionalRecs": {
+          "description": "Additional records",
+          "items": {
+            "$ref": "#/$defs/AdditionalRec"
+          },
+          "title": "Additionalrecs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "AdditionalRecsByPerson",
       "type": "object"
     },
     "AdditionalRecsBySubjectHeadings": {
@@ -187,7 +187,7 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/$defs/AdditionalRecsByAuthor"
+                "$ref": "#/$defs/AdditionalRecsByPerson"
               },
               {
                 "$ref": "#/$defs/AdditionalRecsBySubjectHeadings"
@@ -231,6 +231,19 @@
     },
     "BasicMarc21MD": {
       "properties": {
+        "primaryBibIdentifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Primary bibliographic identifier",
+          "title": "Primarybibidentifier"
+        },
         "title": {
           "$ref": "#/$defs/Marc21MdTitle",
           "default": null,
@@ -345,12 +358,12 @@
           "title": "Bibresourcetype",
           "type": "string"
         },
-        "fullTextURLs": {
-          "description": "Full text URLs (856u if 8563 == 'Volltext')",
+        "electronicLocations": {
+          "description": "URLs (856)",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/Marc21MdElectronicLocation"
           },
-          "title": "Fulltexturls",
+          "title": "Electroniclocations",
           "type": "array"
         },
         "abstracts": {
@@ -359,14 +372,6 @@
             "type": "string"
           },
           "title": "Abstracts",
-          "type": "array"
-        },
-        "tableOfContentURLs": {
-          "description": "Table of content URLs (856u if 8563 == 'Inhaltsverzeichnis')",
-          "items": {
-            "type": "string"
-          },
-          "title": "Tableofcontenturls",
           "type": "array"
         },
         "identifier": {
@@ -378,7 +383,7 @@
           "type": "array"
         },
         "holdingInfos": {
-          "description": "Holding Information: Lib, Loc, CN (AVA R)",
+          "description": "Holding Information: Inst, Lib, Loc, CN",
           "items": {
             "$ref": "#/$defs/Marc21MdHoldingInfos"
           },
@@ -404,6 +409,9 @@
               "$ref": "#/$defs/OenbResponse"
             },
             {
+              "$ref": "#/$defs/GbvResponse"
+            },
+            {
               "$ref": "#/$defs/DnbResponse"
             }
           ],
@@ -416,19 +424,8 @@
       "title": "BibliographicLibraryResponse",
       "type": "object"
     },
-    "BookCoverOpenLibrary": {
+    "BookCoverData": {
       "properties": {
-        "imageSize": {
-          "default": "M",
-          "description": "Size of cover image to retrieve via URL",
-          "enum": [
-            "S",
-            "M",
-            "L"
-          ],
-          "title": "Imagesize",
-          "type": "string"
-        },
         "isbn": {
           "anyOf": [
             {
@@ -439,8 +436,19 @@
             }
           ],
           "default": null,
-          "description": "ISBN identifier to fetch cover image for",
+          "description": "ISBN identifier used to fetch the cover image",
           "title": "Isbn"
+        },
+        "imageSize": {
+          "default": "M",
+          "description": "Size variant of the cover image",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ],
+          "title": "Imagesize",
+          "type": "string"
         },
         "coverURL": {
           "anyOf": [
@@ -452,11 +460,63 @@
             }
           ],
           "default": null,
-          "description": "Computed Open Library covers endpoint URL",
+          "description": "Direct URL to the retrieved cover image",
           "title": "Coverurl"
+        },
+        "source": {
+          "default": "dnb",
+          "description": "The external service that successfully provided the cover image",
+          "enum": [
+            "dnb",
+            "google_books",
+            "open_library",
+            "other"
+          ],
+          "title": "Source",
+          "type": "string"
         }
       },
-      "title": "BookCoverOpenLibrary",
+      "title": "BookCoverData",
+      "type": "object"
+    },
+    "BookDescriptionData": {
+      "properties": {
+        "isbn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The clean ISBN associated with the description lookup",
+          "title": "Isbn"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The full abstract, description, or summary text of the book",
+          "title": "Description"
+        },
+        "source": {
+          "description": "The provider that successfully supplied the description (e.g., 'google_books', 'open_library', 'wikipedia')",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "BookDescriptionData",
       "type": "object"
     },
     "ConferenceOrEventLobidGND": {
@@ -886,25 +946,6 @@
       "title": "DefaultWikidata",
       "type": "object"
     },
-    "DescriptionGoogleBooks": {
-      "properties": {
-        "description": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "https://www.googleapis.com/books/v1/volumes?q=isbn:<ISBN> , may need an API key at some point,\n                    ca. 100 calls per day for free, get info at items elem, list[0], volumeInfoElem, description text node\n                    could also try to use OpenLibrary: access via ISBN, the get work Id then access via work ID,\n                    look for description elem, value text node\n                    ",
-          "title": "Description"
-        }
-      },
-      "title": "DescriptionGoogleBooks",
-      "type": "object"
-    },
     "DnbResponse": {
       "description": "The explicit footprint for the German National Library.",
       "properties": {
@@ -920,6 +961,22 @@
           "default": null,
           "description": "System identifier (e.g., Barcode or Bib Identifier)",
           "title": "Identifier"
+        },
+        "diagnostics": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Execution warnings, data anomalies, or collision notes",
+          "title": "Diagnostics"
         },
         "basicMarc21MD": {
           "anyOf": [
@@ -948,50 +1005,50 @@
         "gndInfoLobid": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DataLobidGND"
+              "$ref": "#/$defs/EnrichmentEnvelope_DataLobidGND_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Data fetched via Lobid GND API"
+          "description": "Data fetched via Lobid GND API with execution diagnostics"
         },
         "wikidataData": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DataWikidata"
+              "$ref": "#/$defs/EnrichmentEnvelope_DataWikidata_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Data fetched via Wikidata SPARQL"
+          "description": "Data fetched via Wikidata SPARQL with execution diagnostics"
         },
         "bookCover": {
           "anyOf": [
             {
-              "$ref": "#/$defs/BookCoverOpenLibrary"
+              "$ref": "#/$defs/EnrichmentEnvelope_BookCoverData_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Book cover fetched via Open Library"
+          "description": "Book cover fetched via waterfall providers"
         },
         "bookDescription": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DescriptionGoogleBooks"
+              "$ref": "#/$defs/EnrichmentEnvelope_BookDescriptionData_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Description fetched via GoogleBooks"
+          "description": "Description fetched via waterfall providers"
         },
         "iName": {
           "const": "dnb",
@@ -1001,6 +1058,317 @@
         }
       },
       "title": "DnbResponse",
+      "type": "object"
+    },
+    "EnrichmentEnvelope_BookCoverData_": {
+      "properties": {
+        "status": {
+          "description": "Execution status of the external enrichment API call",
+          "enum": [
+            "success",
+            "not_found",
+            "error",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable context, error reason, or success note",
+          "title": "Message"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BookCoverData"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Actual payload data if successful"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "EnrichmentEnvelope[BookCoverData]",
+      "type": "object"
+    },
+    "EnrichmentEnvelope_BookDescriptionData_": {
+      "properties": {
+        "status": {
+          "description": "Execution status of the external enrichment API call",
+          "enum": [
+            "success",
+            "not_found",
+            "error",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable context, error reason, or success note",
+          "title": "Message"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BookDescriptionData"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Actual payload data if successful"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "EnrichmentEnvelope[BookDescriptionData]",
+      "type": "object"
+    },
+    "EnrichmentEnvelope_DataLobidGND_": {
+      "properties": {
+        "status": {
+          "description": "Execution status of the external enrichment API call",
+          "enum": [
+            "success",
+            "not_found",
+            "error",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable context, error reason, or success note",
+          "title": "Message"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataLobidGND"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Actual payload data if successful"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "EnrichmentEnvelope[DataLobidGND]",
+      "type": "object"
+    },
+    "EnrichmentEnvelope_DataWikidata_": {
+      "properties": {
+        "status": {
+          "description": "Execution status of the external enrichment API call",
+          "enum": [
+            "success",
+            "not_found",
+            "error",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Human-readable context, error reason, or success note",
+          "title": "Message"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataWikidata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Actual payload data if successful"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "EnrichmentEnvelope[DataWikidata]",
+      "type": "object"
+    },
+    "GbvResponse": {
+      "description": "The explicit footprint for the GBV / K10plus library network.",
+      "properties": {
+        "identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "System identifier (e.g., Barcode or Bib Identifier)",
+          "title": "Identifier"
+        },
+        "diagnostics": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Execution warnings, data anomalies, or collision notes",
+          "title": "Diagnostics"
+        },
+        "basicMarc21MD": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BasicMarc21MD"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Basic Marc21 metadata"
+        },
+        "additionalRecsSRU": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AdditionalRecsSRU"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Similar Records via SRU"
+        },
+        "gndInfoLobid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnrichmentEnvelope_DataLobidGND_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Lobid GND API with execution diagnostics"
+        },
+        "wikidataData": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnrichmentEnvelope_DataWikidata_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data fetched via Wikidata SPARQL with execution diagnostics"
+        },
+        "bookCover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnrichmentEnvelope_BookCoverData_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Book cover fetched via waterfall providers"
+        },
+        "bookDescription": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnrichmentEnvelope_BookDescriptionData_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Description fetched via waterfall providers"
+        },
+        "iName": {
+          "const": "gbv",
+          "default": "gbv",
+          "title": "Iname",
+          "type": "string"
+        },
+        "identifierType": {
+          "anyOf": [
+            {
+              "enum": [
+                "bibId",
+                "isbn"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Type of input identifier used",
+          "title": "Identifiertype"
+        }
+      },
+      "title": "GbvResponse",
       "type": "object"
     },
     "LobidGndAffiliation": {
@@ -1369,7 +1737,7 @@
             }
           ],
           "default": null,
-          "description": "GND-ID (700/710/7110 NR)",
+          "description": "GND-ID (700/710/7110 prefix (DE-588))",
           "title": "Gndidentifier"
         }
       },
@@ -1401,8 +1769,93 @@
       "title": "Marc21MdClassificationNumber",
       "type": "object"
     },
+    "Marc21MdElectronicLocation": {
+      "properties": {
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Uniform Resource Identifier (856u NR)",
+          "title": "Url"
+        },
+        "materialsSpecified": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Specified materials, e.g., 'Volltext', 'Inhaltsverzeichnis' (8563 NR)",
+          "title": "Materialsspecified"
+        },
+        "publicNotes": {
+          "description": "Public notes/descriptions (856z R)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Publicnotes",
+          "type": "array"
+        },
+        "relationshipIndicator": {
+          "anyOf": [
+            {
+              "enum": [
+                "0",
+                "1",
+                "2",
+                "#"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Second indicator (Relationship): '0'=Resource (Medium), '1'=Version, '2'=Related medium, '#'=No information",
+          "title": "Relationshipindicator"
+        }
+      },
+      "title": "Marc21MdElectronicLocation",
+      "type": "object"
+    },
     "Marc21MdHoldingInfos": {
       "properties": {
+        "institutionCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Institution Code",
+          "title": "Institutioncode"
+        },
+        "institutionLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Institution Label",
+          "title": "Institutionlabel"
+        },
         "libraryCode": {
           "anyOf": [
             {
@@ -1413,7 +1866,7 @@
             }
           ],
           "default": null,
-          "description": "Library Code (AVAb NR)",
+          "description": "Library Code",
           "title": "Librarycode"
         },
         "libraryLabel": {
@@ -1426,7 +1879,7 @@
             }
           ],
           "default": null,
-          "description": "Library Label (AVAc NR)",
+          "description": "Library Label",
           "title": "Librarylabel"
         },
         "locationCode": {
@@ -1439,7 +1892,7 @@
             }
           ],
           "default": null,
-          "description": "Location Code (AVAj NR)",
+          "description": "Location Code",
           "title": "Locationcode"
         },
         "locationLabel": {
@@ -1452,7 +1905,7 @@
             }
           ],
           "default": null,
-          "description": "Location Label (AVAq NR)",
+          "description": "Location Label",
           "title": "Locationlabel"
         },
         "callNumber": {
@@ -1465,7 +1918,7 @@
             }
           ],
           "default": null,
-          "description": "Call Number (AVAd NR)",
+          "description": "Call Number",
           "title": "Callnumber"
         },
         "itemInfos": {
@@ -1628,7 +2081,7 @@
             }
           ],
           "default": null,
-          "description": "GND-ID (100/110/1110 NR)",
+          "description": "GND-ID (100/110/1110 prefix (DE-588))",
           "title": "Gndidentifier"
         }
       },
@@ -1799,6 +2252,22 @@
           "description": "System identifier (e.g., Barcode or Bib Identifier)",
           "title": "Identifier"
         },
+        "diagnostics": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Execution warnings, data anomalies, or collision notes",
+          "title": "Diagnostics"
+        },
         "basicMarc21MD": {
           "anyOf": [
             {
@@ -1826,50 +2295,50 @@
         "gndInfoLobid": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DataLobidGND"
+              "$ref": "#/$defs/EnrichmentEnvelope_DataLobidGND_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Data fetched via Lobid GND API"
+          "description": "Data fetched via Lobid GND API with execution diagnostics"
         },
         "wikidataData": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DataWikidata"
+              "$ref": "#/$defs/EnrichmentEnvelope_DataWikidata_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Data fetched via Wikidata SPARQL"
+          "description": "Data fetched via Wikidata SPARQL with execution diagnostics"
         },
         "bookCover": {
           "anyOf": [
             {
-              "$ref": "#/$defs/BookCoverOpenLibrary"
+              "$ref": "#/$defs/EnrichmentEnvelope_BookCoverData_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Book cover fetched via Open Library"
+          "description": "Book cover fetched via waterfall providers"
         },
         "bookDescription": {
           "anyOf": [
             {
-              "$ref": "#/$defs/DescriptionGoogleBooks"
+              "$ref": "#/$defs/EnrichmentEnvelope_BookDescriptionData_"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Description fetched via GoogleBooks"
+          "description": "Description fetched via waterfall providers"
         },
         "iName": {
           "const": "oenb",
@@ -1882,7 +2351,9 @@
             {
               "enum": [
                 "barcode",
-                "ac"
+                "bibId",
+                "ac",
+                "isbn"
               ],
               "type": "string"
             },
