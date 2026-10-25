@@ -36,7 +36,7 @@ class LobidService:
 
         try:
             # phase 2: execute asynchronous HTTP GET request to Lobid API
-            res = await self.client.get(url)
+            res = await self.client.get(url, timeout=4.0)
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             
             # handle explicit resource misses gracefully (HTTP 404)

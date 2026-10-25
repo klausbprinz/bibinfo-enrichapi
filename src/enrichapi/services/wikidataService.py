@@ -59,7 +59,7 @@ class WikidataService:
                 WIKIDATA_SPARQL_URL,
                 params={"query": query, "format": "json"},
                 headers=HEADERS,
-                timeout=10.0,
+                timeout=4.0,
             )
             elapsedMs = round((time.perf_counter() - startTime) * 1000, 2)
             response.raise_for_status()
