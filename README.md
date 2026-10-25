@@ -4,14 +4,14 @@ author: "Klaus Prinz"
 domain: "software"
 status: "active"
 createdDate: "2026-06-03"
-tags: [fastapi, pydantic, lxml, marcxml, gnd, lobid, json, json schema, swagger, sparql, httpx, async, asyncio, wikidata, containerfile, pdoc, unit test, pytest]
+ttags: [fastapi, pydantic, lxml, marcxml, gnd, lobid, json, json schema, swagger, sparql, httpx, async, asyncio, wikidata, containerfile, pdoc, unit test, pytest, polymorphic, sru, pica]
 requester: "bibinfo"
 ticketId: ""
 ---
 
 # bibinfo-enrichapi
 
-> **Quick Summary:** A modular FastAPI service designed to fetch, parse, and asynchronously enrich library MARC21 bibliographic records (ÖNB/SRU) with linked data authority files (Lobid GND), knowledge graphs (Wikidata SPARQL), Open Library book covers, and Google Books abstracts.
+> **Quick Summary:** A modular FastAPI service designed to fetch, parse, and asynchronously enrich library MARC21 bibliographic records across multiple institutional union catalogs (**ÖNB** and **GBV / K10plus**) with linked data authority files (Lobid GND), knowledge graphs (Wikidata SPARQL), and waterfall-modelled book covers and descriptions.
 
 ---
 
@@ -56,21 +56,28 @@ podman run -d -p 8000:8000 --name enrichapi enrichapi:latest
 ---
 
 ## Example usage
-Start the API server, open `notebooks/exampleUsage.ipynb`, and run all cells.
+Start the API server, open `notebooks/exampleUsage.ipynb` or `notebooks/testPipeline.ipynb`, and run all cells.
 
 ---
 
 
 ## Context & Objectives
-`bibinfo-enrichapi` provides a unified JSON endpoint (`POST /enrich`) for fetching and augmenting MARC21 bibliographic data with external authority services.
+`bibinfo-enrichapi` provides a unified JSON endpoint (`POST /enrich`) for fetching and augmenting MARC21 bibliographic data from multiple library networks using a polymorphic service architecture (`BaseSruService` with `OenbSruService` and `GbvSruService` overrides) and Pydantic generic envelopes (`EnrichmentEnvelope[T]`).
 
-- Sequential Phase 1 (Core Retrieval): Queries institutional SRU servers (such as the ÖNB - Austrian National Library) by AC-Number or Barcode to retrieve raw MARC21 XML, which is parsed into structured Pydantic models.
-- Parallel Phase 2 (Async Concurrent Enrichment): Uses non-blocking `asyncio.gather` with `httpx` to concurrently fetch:
-    - Lobid GND API: Authority record information for authors, entities, and events.
-    - Wikidata SPARQL: Structured graph metadata using GND identifiers or Wikidata QIDs.
-    - Book Covers & Abstracts: Cover images (Open Library) and descriptions (Google Books / Open Library).
-    - Subsidiary SRU Discovery: Related books matched by author name, subject headings, or classification codes.
-- Direct ID Bypasses: Support for direct lookup using known GND IDs, Wikidata QIDs, or ISBNs without needing prior SRU discovery.
+- **Sequential Phase 1 (Core Retrieval)**: Queries institutional SRU servers (ÖNB / Alma or GBV K10plus / PICA) by system identifiers (AC-Number, PPN), Barcodes, or ISBNs (`identifierType: "isbn"`) to retrieve raw MARC21 XML, parsed into structured Pydantic models.
+- **Parallel Phase 2 (Async Concurrent Enrichment)**: Uses non-blocking `asyncio.gather` with `httpx` to concurrently fetch:
+    - **Lobid GND API**: Authority record information for authors, entities, and events.
+    - **Wikidata SPARQL**: Structured graph metadata using GND identifiers or Wikidata QIDs.
+    - **Multi-Tier Waterfall Cover Retrieval (`CoverService`)**:
+        1. **DNB Cover Endpoint** (Fast lookup for German/Austrian titles via HEAD request)
+        2. **Google Books Volumes API** (Fast global lookup with optional API key)
+        3. **Open Library Books API** (JSON metadata lookup for Cover ID)
+        4. **Open Library Direct Cover Endpoint** (HEAD request fallback)
+    - **Multi-Tier Waterfall Description Retrieval (`AbstractService`)**:
+        1. **Google Books API** (Fast ISBN lookup with optional API key & strict timeout)
+        2. **Open Library Works API** (ISBN $\rightarrow$ Work key $\rightarrow$ Description fallback)
+    - **Subsidiary SRU Discovery**: Related books matched by person name (`pica.per` / ÖNB indexes), subject headings, or classification codes (RVK, BKL, DDC) with self-exclusion guardrails.
+    - **Direct ID Bypasses**: Support for direct lookup using known GND IDs, Wikidata QIDs, or ISBNs without needing prior SRU discovery.
 ---
 
 ## Project Layout
@@ -89,12 +96,12 @@ bibinfo-enrichapi/
 │   └── buildDocs.py            # Combined JSON Schema & pdoc HTML build script
 ├── src/                        # Main application package source
 │   └── enrichapi/
+│       ├── handlers/           # Institution-specific enrichment strategies (oenb, gbv)
 │       ├── models/             # Pydantic request & response models
-│       ├── services/           # Async HTTP services (SRU, Lobid, Wikidata, etc.)
-│       ├── utils/              # Pure domain helpers (MARC21 XML parser)
-│       ├── handlers.py         # Enrichment strategy execution pipeline
+│       ├── services/           # Async HTTP services
+│       ├── utils/              # Domain helpers
 │       └── main.py             # FastAPI entrypoint and router definitions
-├── tests/                      # Unit & integration test suite
+├── tests/                      # Unit & integration test suite (not updated)
 ├── environment.yaml            # Conda environment definition
 ├── pyproject.toml              # Build backend, dependencies, and tool settings
 └── README.md                   # Project landing documentation
@@ -122,7 +129,8 @@ python scripts/buildDocs.py
 ## Dependencies & Requirements
 - Python: `>= 3.10`
 - Core Framework: `fastapi`, `uvicorn[standard]`
-- Data Validation: `pydantic`
+- Data Validation: `pydantic` (with generic type support)
+- Environment Configuration: `python-dotenv` (for API key management)
 - Async I/O & Parsing: `httpx`, `lxml`
 - Development & Testing: `pytest`, `pytest-cov`, `pdoc`
 
