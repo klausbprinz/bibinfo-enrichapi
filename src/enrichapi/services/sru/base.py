@@ -26,7 +26,7 @@ from ...models.basicMarc21MD import (
 )
 from ...models.additionalRecsSRU import (
     AdditionalRecsSRU, 
-    AdditionalRecsByAuthor, 
+    AdditionalRecsByPerson, 
     AdditionalRecsBySubjectHeadings, 
     AdditionalRecsByClassification,
     AdditionalRec
@@ -66,7 +66,7 @@ class BaseSruService(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def buildAuthorQuery(self, authorName: str) -> str:
+    def buildPersonQuery(self, personName: str) -> str:
         """Constructs the subsidiary search query string for author matching."""
         pass
 
@@ -275,15 +275,15 @@ class BaseSruService(abc.ABC):
         baseBibId = self.extractBaseBibId(marcData)
         logger.info(f"[SRU] Preparing subsidiary searches for base record ID='{baseBibId}'")
 
-        # 1. author-based similarity query
-        if data.fetchSimilarByAuthor:
+        # 1. person-based similarity query
+        if data.fetchSimilarByPerson:
             if marcData.mainEntry and marcData.mainEntry.name:
-                authorName = marcData.mainEntry.name
-                queryStr = self.buildAuthorQuery(authorName)
+                personName = marcData.mainEntry.name
+                queryStr = self.buildPersonQuery(personName)
                 tasks.append(self._executeSubsidiarySRU(queryStr, baseIdentifier=baseBibId, maxRecs=data.maxRecs))
-                taskTypes.append(("author", authorName))
+                taskTypes.append(("person", personName))
             else:
-                finalRecords.append(AdditionalRecsByAuthor(searchType="author", name="", maxRecs=data.maxRecs, additionalRecs=[]))
+                finalRecords.append(AdditionalRecsByPerson(searchType="person", name="", maxRecs=data.maxRecs, additionalRecs=[]))
 
         # 2. subject-headings-based similarity query
         if data.fetchSimilarBySubject:
@@ -315,8 +315,8 @@ class BaseSruService(abc.ABC):
                 else:
                     recs = [AdditionalRec(**r) if isinstance(r, dict) else r for r in res]
 
-                if category == "author":
-                    finalRecords.append(AdditionalRecsByAuthor(searchType="author", name=criteria, maxRecs=data.maxRecs, additionalRecs=recs))
+                if category == "person":
+                    finalRecords.append(AdditionalRecsByPerson(searchType="person", name=criteria, maxRecs=data.maxRecs, additionalRecs=recs))
                 elif category == "subject":
                     finalRecords.append(AdditionalRecsBySubjectHeadings(searchType="subjectHeadings", subjectHeadings=criteria, maxRecs=data.maxRecs, additionalRecs=recs))
                 elif category == "classification":

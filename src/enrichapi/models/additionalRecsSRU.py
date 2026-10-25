@@ -16,10 +16,10 @@ class AdditionalRec(BaseModel):
     issns: list[str] = Field(default_factory=list, description="ISSN identifiers of additional record")
 
 
-class AdditionalRecsByAuthor(BaseModel):
+class AdditionalRecsByPerson(BaseModel):
 
-    searchType: Literal["author"] = "author"
-    name: str = Field(description="Author name to search via SRU")
+    searchType: Literal["person"] = "person"
+    name: str = Field(description="Person name to search via SRU")
     maxRecs: int | None = Field(default=None, description="Maximum number of additional records")
     additionalRecs: list[AdditionalRec] = Field(default_factory=list, description="Additional records")
 
@@ -61,7 +61,7 @@ def resolveSearchType(v: Any) -> str:
     else:
         sType = None
 
-    if sType in ("author", "subjectHeadings", "classification"):
+    if sType in ("person", "subjectHeadings", "classification"):
         return sType
 
     return "default"
@@ -71,7 +71,7 @@ class AdditionalRecsSRU(BaseModel):
     records: list[
         Annotated[
             Union[
-                Annotated[AdditionalRecsByAuthor, Tag("author")],
+                Annotated[AdditionalRecsByPerson, Tag("person")],
                 Annotated[AdditionalRecsBySubjectHeadings, Tag("subjectHeadings")],
                 Annotated[AdditionalRecsByClassification, Tag("classification")],
                 Annotated[DefaultAdditionalRecs, Tag("default")]

@@ -56,7 +56,7 @@ class OenbSruService(BaseSruService):
     # CONCRETE IMPLEMENTATION: Subsidiary Query Builders (Alma Indexes)
     # =====================================================================
 
-    def buildAuthorQuery(self, authorName: str) -> str:
+    def buildPersonQuery(self, authorName: str) -> str:
         """Builds an Alma-specific creator search query."""
         return f'alma.creator="{authorName}"'
 
