@@ -1,6 +1,7 @@
 from httpx import AsyncClient
 from urllib.parse import quote
 from typing import Any
+from lxml import etree
 
 from .base import BaseSruService
 from ...models.basicMarc21MD import BasicMarc21MD
@@ -38,6 +39,18 @@ class OenbSruService(BaseSruService):
                 if idObj.idType == "primaryBib" and idObj.value:
                     return idObj.value
         return None
+
+    def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
+        """Parses core MARC21 XML and attaches default OeNB institution metadata to holdings."""
+        marcData = super().extractMarc21Metadata(marcRecord)
+        
+        # apply default institution metadata to all parsed holdings
+        if marcData.holdingInfos:
+            for holding in marcData.holdingInfos:
+                holding.institutionCode = "43ACC_ONB"
+                holding.institutionLabel = "Österreichische Nationalbibliothek"
+                
+        return marcData
 
     # =====================================================================
     # CONCRETE IMPLEMENTATION: Subsidiary Query Builders (Alma Indexes)

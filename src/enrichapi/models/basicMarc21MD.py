@@ -67,11 +67,13 @@ class Marc21MdItemInfos(BaseModel):
 
 class Marc21MdHoldingInfos(BaseModel):
 
-    libraryCode: str | None = Field(default=None, description="Library Code (AVAb NR)")
-    libraryLabel: str | None = Field(default=None, description="Library Label (AVAc NR)")
-    locationCode: str | None = Field(default=None, description="Location Code (AVAj NR)")
-    locationLabel: str | None = Field(default=None, description="Location Label (AVAq NR)")
-    callNumber: str | None = Field(default=None, description="Call Number (AVAd NR)")
+    institutionCode: str | None = Field(default=None, description="Institution Code")
+    institutionLabel: str | None = Field(default=None, description="Institution Label")
+    libraryCode: str | None = Field(default=None, description="Library Code")
+    libraryLabel: str | None = Field(default=None, description="Library Label")
+    locationCode: str | None = Field(default=None, description="Location Code")
+    locationLabel: str | None = Field(default=None, description="Location Label")
+    callNumber: str | None = Field(default=None, description="Call Number")
     itemInfos: Marc21MdItemInfos | None = Field(default=None, description="Number of items and availability")
     
 
