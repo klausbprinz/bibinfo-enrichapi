@@ -19,7 +19,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)            # maybe reset?
 
 # load environment variables from .env file
 load_dotenv()
