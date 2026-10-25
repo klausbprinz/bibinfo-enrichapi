@@ -145,7 +145,7 @@ class BaseSruService(abc.ABC):
                     for elem in recordElems:
                         marcRec = elem.find("srw:recordData/marc:record", namespaces=self.ns)
                         if marcRec is not None:
-                            tempParsed = parse.extractMarc21Metadata(marcRec) if hasattr(parse, 'extractMarc21Metadata') else None
+                            tempParsed = self.extractMarc21Metadata(marcRec) if hasattr(self, 'extractMarc21Metadata') else None
                             bibIdVal = self.extractBaseBibId(tempParsed) if tempParsed else None
                             
                             titleMain, titleRem, _, _ = parse.extractTitleData(marcRec)
