@@ -75,7 +75,7 @@ class OenbResponse(BaseInstitutionResponse):
 class GbvResponse(BaseInstitutionResponse):
     """The explicit footprint for the GBV / K10plus library network."""
     iName: Literal["gbv"] = "gbv"
-    identifierType: Literal["barcode", "bibId", "isbn"] | None = Field(
+    identifierType: Literal["bibId", "isbn"] | None = Field(
         default=None, description="Type of input identifier used"
     )
 
