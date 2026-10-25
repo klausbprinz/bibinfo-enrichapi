@@ -69,9 +69,16 @@ def extractEntryData(field: etree._Element) -> dict | None:
     relatorElems = field.findall('marc:subfield[@code="4"]', namespaces=nsMap)
     relators = [e.text.strip() for e in relatorElems if e.text]
 
-    gndElem = field.find('marc:subfield[@code="0"]', namespaces=nsMap)
-    gndRaw = gndElem.text if (gndElem is not None and gndElem.text) else None
-    gndClean = gndRaw.replace("(DE-588)", "").strip() if gndRaw else None
+    # find all subfield 0 elements
+    subfield0Elems = field.findall('marc:subfield[@code="0"]', namespaces=nsMap)
+    gndClean = None
+
+    for elem in subfield0Elems:
+        text = elem.text.strip() if elem.text else ""
+        # check if it belongs to GND authority network (DE-588)
+        if "(DE-588)" in text or text.startswith("DE-588"):
+            gndClean = text.replace("(DE-588)", "").strip()
+            break  # found true GND ID, exit loop
 
     return {
         "name": name,
