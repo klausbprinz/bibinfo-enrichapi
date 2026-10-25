@@ -96,7 +96,7 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
         logger.info("[Handler] Phase 2: Assembling parallel background tasks...")
 
         # subsidiary SRU query task in parallel worker pool
-        if marcData and (data.fetchSimilarByAuthor or data.fetchSimilarBySubject or data.fetchSimilarByClassification):
+        if marcData and (data.fetchSimilarByPerson or data.fetchSimilarBySubject or data.fetchSimilarByClassification):
             tasks.append(sruService.fetchAdditionalRecords(marcData, data))
             taskMappings["similarRecs"] = len(tasks) - 1
             logger.debug("[Handler] Enqueued Task: Similar Records (SRU)")

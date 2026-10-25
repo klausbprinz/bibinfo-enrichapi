@@ -43,7 +43,7 @@ class OeNBRequestData(BaseModel):
     fetchDescription: bool = Field(default=False, description="Fetch Book Description / Abstract")
 
     # granular sru similar recs features
-    fetchSimilarByAuthor: bool = Field(default=False, description="Fetch subsidiary records by the author's name")
+    fetchSimilarByPerson: bool = Field(default=False, description="Fetch subsidiary records by person's name")
     fetchSimilarBySubject: bool = Field(default=False, description="Fetch subsidiary records by subject headings")
     fetchSimilarByClassification: bool = Field(default=False, description="Fetch subsidiary records by classification numbers")
 
