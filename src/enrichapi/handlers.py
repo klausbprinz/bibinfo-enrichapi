@@ -7,7 +7,8 @@ from httpx import AsyncClient
 from .models.request import OeNBRequestData
 from .models.response import OenbResponse
 
-from .services.sruService import SruService
+#from .services.sruService import SruService
+from .services.sru.oenb import OenbSruService
 from .services.lobidService import LobidService
 from .services.wikidataService import WikidataService
 from .services.coverService import CoverService
@@ -29,7 +30,8 @@ async def baseFetchOeNB(data: OeNBRequestData) -> OenbResponse:
     async with AsyncClient() as client:
         
         # initialize helper pipeline services sharing the active client connection
-        sruService = SruService(client)
+        #sruService = SruService(client)
+        sruService = OenbSruService(client)
         lobidService = LobidService(client)
         wikidataService = WikidataService(client)
 
