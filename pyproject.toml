@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enrichapi"
-version = "0.1.0"
+version = "0.2.0"
 description = "Bibliographic Data Enrichment API"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,13 +13,15 @@ dependencies = [
     "pydantic>=2.13.0",
     "lxml>=6.1.0",
     "httpx>=0.27.0",
-    "uvicorn[standard]>=0.28.0"
+    "uvicorn[standard]>=0.28.0",
+    "python-dotenv>=1.0.0"
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "pytest-cov>=6.0.0"
+    "pytest-cov>=6.0.0",
+    "pdoc>=14.0.0"
 ]
 
 # tell setuptools where code lives
