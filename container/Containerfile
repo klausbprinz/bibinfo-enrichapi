@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # prevent Python from writing .pyc files and enable unbuffered output for FastAPI logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# install system dependencies (e.g. libxml2 for lxml if needed)
+# install system dependencies (e.g. build tools for lxml if building from source)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -22,5 +22,5 @@ RUN pip install --no-cache-dir .
 # expose FastAPI default port
 EXPOSE 8000
 
-# run FastAPI dev/prod server via uvicorn
+# run FastAPI server via uvicorn
 CMD ["uvicorn", "enrichapi.main:app", "--host", "0.0.0.0", "--port", "8000"]
