@@ -10,7 +10,8 @@ from fastapi import FastAPI, HTTPException, Request, status
 
 #from .handlers import baseFetchOeNB
 from .handlers.oenb import baseFetchOeNB
-from .models.request import OeNBRequestData, EnrichmentRequest
+from .handlers.gbv import baseFetchGBV
+from .models.request import OeNBRequestData, GBVRequestData, EnrichmentRequest
 from .models.response import RootApiResponse, BibliographicLibraryResponse
 
 # configure central logging format for the entire application
@@ -61,6 +62,7 @@ app = FastAPI(
 # Registry: map the input class to handler function
 ENRICHMENT_STRATEGIES = {
     OeNBRequestData: baseFetchOeNB,
+    GBVRequestData: baseFetchGBV
     # could add eg: LibraryOfCongress: baseFetchLOC,
 }
 
