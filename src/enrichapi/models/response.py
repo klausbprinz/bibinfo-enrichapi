@@ -87,11 +87,12 @@ class DnbResponse(BaseInstitutionResponse):
 
 
 def resolveInstitutionType(v: Any) -> str:
-    
+    """Dynamically extracts iName from dictionaries or model instances."""
     if isinstance(v, dict):
         return v.get("iName", "oenb")
     
-    return "oenb"
+    # if already a Pydantic model instance, check its attribute
+    return getattr(v, "iName", "oenb")
 
 
 # =====================================================================

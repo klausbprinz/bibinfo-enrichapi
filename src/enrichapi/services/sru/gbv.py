@@ -2,10 +2,14 @@ from httpx import AsyncClient
 from urllib.parse import quote
 from typing import Any
 from lxml import etree
+import time
 
 from .base import BaseSruService
 from ...models.basicMarc21MD import BasicMarc21MD
 from ...models.basicMarc21MD import Marc21MdHoldingInfos
+
+from ...utils import marc21parser as parse
+
 from fastapi import HTTPException
 
 class GbvSruService(BaseSruService):
@@ -18,6 +22,7 @@ class GbvSruService(BaseSruService):
         super().__init__(client)
         # standard K10plus union catalog GVK SRU endpoint
         self.baseUrl = "https://sru.k10plus.de/gvk"
+        self.recordSchema = "marcxml"
 
     # =====================================================================
     # CONCRETE IMPLEMENTATION: Primary Query & Identifiers
@@ -39,11 +44,14 @@ class GbvSruService(BaseSruService):
         )
 
     def extractBaseBibId(self, marcData: BasicMarc21MD) -> str | None:
-        """Extracts the PPN / primary bib identifier from parsed MARC21 metadata."""
+        """Extracts the primary PPN identifier from parsed MARC21 metadata."""
+        if marcData.primaryBibIdentifier:
+            return marcData.primaryBibIdentifier.strip()
+            
         if marcData.identifier:
             for idObj in marcData.identifier:
-                if idObj.idType in ("primaryBib", "ppn") and idObj.value:
-                    return idObj.value
+                if idObj.idType in ("primaryBib", "ppn", "almaBib", "systemId") and idObj.value:
+                    return idObj.value.strip()
         return None
 
     def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
@@ -121,3 +129,44 @@ class GbvSruService(BaseSruService):
 
         classNumbers = list(dict.fromkeys([c.classificationNumber for c in target]))
         return " AND ".join([f'{indexName}="{num}"' for num in classNumbers])
+
+    # =====================================================================
+    # OVERRIDE: _executeSubsidiarySRU
+    # =====================================================================
+
+    async def _executeSubsidiarySRU(self, queryString: str, baseIdentifier: str | None = None, maxRecs: int = 5) -> list[dict]:
+        """GBV-specific override to correctly extract PPN from control field 001 and filter out self-matches."""
+        fetchCount = maxRecs + 1 if baseIdentifier else maxRecs
+        params = {"version": "1.2", "operation": "searchRetrieve", "query": queryString, "maximumRecords": str(fetchCount)}
+        if self.recordSchema:
+            params["recordSchema"] = self.recordSchema
+        
+        startTime = time.perf_counter()
+        try:
+            res = await self.client.get(self.baseUrl, params=params, timeout=8.0)
+            res.raise_for_status()
+
+            sruRoot = etree.fromstring(res.content)
+            recordDataElems = sruRoot.findall(".//srw:recordData/marc:record", namespaces=self.ns)
+
+            extractedRecords = []
+            baseIdClean = baseIdentifier.strip() if baseIdentifier else None
+
+            for recordElem in recordDataElems:
+                recDict = parse.extractAdditionalRecData(recordElem)
+                
+                # force extraction of PPN from control field 001
+                cf001 = recordElem.find('marc:controlfield[@tag="001"]', namespaces=self.ns)
+                if cf001 is not None and cf001.text:
+                    recDict["bibId"] = cf001.text.strip()
+
+                # self-exclusion guardrail
+                recBibId = (recDict.get("bibId") or "").strip()
+                if baseIdClean and recBibId == baseIdClean:
+                    continue
+                    
+                extractedRecords.append(recDict)
+
+            return extractedRecords[:maxRecs]
+        except Exception as e:
+            raise e

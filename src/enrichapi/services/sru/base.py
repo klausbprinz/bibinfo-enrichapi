@@ -46,6 +46,7 @@ class BaseSruService(abc.ABC):
     def __init__(self, client: AsyncClient):
         self.client = client
         self.baseUrl: str = ""
+        self.recordSchema: str | None = None
         self.ns = {
             "srw": "http://www.loc.gov/zing/srw/", 
             "marc": "http://www.loc.gov/MARC21/slim"
@@ -90,7 +91,9 @@ class BaseSruService(abc.ABC):
         normalizedIdType = "bibId" if idType in ("bibId", "ac", "ppn") else idType
 
         query = self.buildPrimaryQuery(cleanId, normalizedIdType)
-        url = f"{self.baseUrl}?version=1.2&operation=searchRetrieve&query={query}"
+        url = f"{self.baseUrl}?version=1.2&operation=searchRetrieve&query={query}&maximumRecords=50"
+        if self.recordSchema:
+            url += f"&recordSchema={self.recordSchema}"
         
         logger.info(f"[SRU] Initiating primary record fetch | id='{cleanId}' type='{normalizedIdType}' query='{query}'")
         startTime = time.perf_counter()
@@ -327,6 +330,8 @@ class BaseSruService(abc.ABC):
         # fetch 1 extra record to account for potential base record self-inclusion
         fetchCount = maxRecs + 1 if baseIdentifier else maxRecs
         params = {"version": "1.2", "operation": "searchRetrieve", "query": queryString, "maximumRecords": str(fetchCount)}
+        if self.recordSchema:
+            params["recordSchema"] = self.recordSchema
         
         startTime = time.perf_counter()
         try:
