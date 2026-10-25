@@ -72,6 +72,12 @@ class OenbResponse(BaseInstitutionResponse):
         default=None, description="Type of input identifier used"
     )
 
+class GbvResponse(BaseInstitutionResponse):
+    """The explicit footprint for the GBV / K10plus library network."""
+    iName: Literal["gbv"] = "gbv"
+    identifierType: Literal["barcode", "bibId", "isbn"] | None = Field(
+        default=None, description="Type of input identifier used"
+    )
 
 # future proofing: adding another library network should be trivial
 class DnbResponse(BaseInstitutionResponse):
@@ -97,10 +103,11 @@ class BibliographicLibraryResponse(BaseModel):
     
     iType: Literal["bib"] = "bib"
     
-    # dynamically decides if it's oenb, dnb, etc.
+    # dynamically resolves oenb, gbv, or dnb based on iName
     result: Annotated[
         Union[
             Annotated[OenbResponse, Tag("oenb")],
+            Annotated[GbvResponse, Tag("gbv")],
             Annotated[DnbResponse, Tag("dnb")]
         ],
         Discriminator(resolveInstitutionType)
