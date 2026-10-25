@@ -61,11 +61,6 @@ class BaseSruService(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def extractBaseBibId(self, marcData: BasicMarc21MD) -> str | None:
-        """Extracts the primary system identifier from parsed MARC21 metadata."""
-        pass
-
-    @abc.abstractmethod
     def buildPersonQuery(self, personName: str) -> str:
         """Constructs the subsidiary search query string for author matching."""
         pass
@@ -79,6 +74,9 @@ class BaseSruService(abc.ABC):
     def buildClassificationQuery(self, classifications: list[Any]) -> str:
         """Constructs the subsidiary search query string for classification matching."""
         pass
+
+    def extractBaseBibId(self, marcData: BasicMarc21MD) -> str | None:
+        return marcData.primaryBibIdentifier
 
     # =====================================================================
     # CORE PIPELINE: Primary Record Fetching & Ambiguity Resolution

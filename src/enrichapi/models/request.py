@@ -56,13 +56,13 @@ class GBVRequestData(BaseModel):
     
     # main identifier
     identifier: str | None = Field(
-        default=None, description="The primary search term (Barcode, PPN / Bib-ID, or ISBN)",
+        default=None, description="The primary search term (PPN / Bib-ID or ISBN)",
         examples=["123456789X", "9783161484100"]
     )
-    identifierType: Literal["barcode", "bibId", "isbn"] | None = Field(
+    identifierType: Literal["bibId", "isbn"] | None = Field(
         default=None, 
         description="Explicitly state what type the identifier is (bibId maps to PPN for K10plus)",
-        examples=["bibId", "barcode", "isbn"]
+        examples=["bibId", "isbn"]
     )
     
     # optional direct bypass identifiers
@@ -78,7 +78,7 @@ class GBVRequestData(BaseModel):
     fetchDescription: bool = Field(default=False, description="Fetch Book Description / Abstract")
 
     # granular sru similar recs features
-    fetchSimilarByAuthor: bool = Field(default=False, description="Fetch subsidiary records by the author's name")
+    fetchSimilarByPerson: bool = Field(default=False, description="Fetch subsidiary records by the author's name")
     fetchSimilarBySubject: bool = Field(default=False, description="Fetch subsidiary records by subject headings")
     fetchSimilarByClassification: bool = Field(default=False, description="Fetch subsidiary records by classification numbers")
 

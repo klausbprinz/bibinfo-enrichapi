@@ -32,19 +32,20 @@ class OenbSruService(BaseSruService):
             return f"alma.isbn={safeId}"
         return f"alma.local_control_field_009={safeId}"
 
-    def extractBaseBibId(self, marcData: BasicMarc21MD) -> str | None:
-        """Extracts the Alma AC-number / primary bib identifier from parsed MARC21 metadata."""
-        if marcData.identifier:
-            for idObj in marcData.identifier:
-                if idObj.idType == "primaryBib" and idObj.value:
-                    return idObj.value
-        return None
-
     def extractMarc21Metadata(self, marcRecord: etree._Element) -> BasicMarc21MD:
-        """Parses core MARC21 XML and attaches default OeNB institution metadata to holdings."""
+        """Parses core MARC21 XML and populates OeNB-specific primary identifier and holdings."""
         marcData = super().extractMarc21Metadata(marcRecord)
         
-        # apply default institution metadata to all parsed holdings
+        # extract control field 009 for Alma AC-number (with MMS-ID fallback)
+        cf009 = marcRecord.find('marc:controlfield[@tag="009"]', namespaces=self.ns)
+        if cf009 is not None and cf009.text:
+            marcData.primaryBibIdentifier = cf009.text.strip()
+        else:
+            cf001 = marcRecord.find('marc:controlfield[@tag="001"]', namespaces=self.ns)
+            if cf001 is not None and cf001.text:
+                marcData.primaryBibIdentifier = cf001.text.strip()
+
+        # apply default institution metadata to holdings
         if marcData.holdingInfos:
             for holding in marcData.holdingInfos:
                 holding.institutionCode = "43ACC_ONB"

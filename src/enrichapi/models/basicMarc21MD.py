@@ -79,6 +79,7 @@ class Marc21MdHoldingInfos(BaseModel):
 
 class BasicMarc21MD(BaseModel):
 
+    primaryBibIdentifier: str | None = Field(default=None, description="Primary bibliographic identifier")
     title: Marc21MdTitle = Field(default=None, description="Title information (245abnp NR)")
     mainEntry: Marc21MdMainEntry | None = Field(default=None, description="Main entry information (100/110/111a40 NR)")
     addedEntries: list[Marc21MdAddedEntry] = Field(default_factory=list, description="List of added entry information (700/710/711a40 R)")
@@ -96,7 +97,7 @@ class BasicMarc21MD(BaseModel):
     electronicLocations: list[Marc21MdElectronicLocation] = Field(default_factory=list, description="URLs (856)")
     abstracts: list[str] = Field(default_factory=list, description="Summary, etc. 520a")
     identifier: list[Marc21MdIdentifier] = Field(default_factory=list, description="Identifier and additional infos (035a, 020a, 022a, 024a)")
-    holdingInfos: list[Marc21MdHoldingInfos] = Field(default_factory=list, description="Holding Information: Lib, Loc, CN (AVA R)")
+    holdingInfos: list[Marc21MdHoldingInfos] = Field(default_factory=list, description="Holding Information: Inst, Lib, Loc, CN")
 
 # example: https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB?version=1.2&query=alma.barcode=Z168276302&operation=searchRetrieve
 # example: https://obv-at-oenb.alma.exlibrisgroup.com/view/sru/43ACC_ONB?version=1.2&query=alma.local_control_field_009=AC08958802&operation=searchRetrieve
