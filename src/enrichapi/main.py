@@ -8,7 +8,8 @@ import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 
-from .handlers import baseFetchOeNB
+#from .handlers import baseFetchOeNB
+from .handlers.oenb import baseFetchOeNB
 from .models.request import OeNBRequestData, EnrichmentRequest
 from .models.response import RootApiResponse, BibliographicLibraryResponse
 
