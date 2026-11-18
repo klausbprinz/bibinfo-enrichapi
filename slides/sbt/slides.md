@@ -27,7 +27,7 @@ style: |
 * **Vorgeschichte & Überlegungen:** Warum das alles? Was habe ich mir dabei gedacht und wie bin ich es angegangen?
 * **Komponenten, Flüsse & Modelle:** Welche Teile hat das Ding und wie wirken sie zusammen? Wie kann man sich den Datenfluss vorstellen? Nach welchen Modellen sind die Modelle modellhaft modelliert? Bunte Grafiken gibt es auch.
 * **Live-Demo:** Es funktioniert wirklich.
-* **Beratungen:** Hilfe bitte.
+* **Beratung:** Vielleicht ein wenig Hilfe?
 
 ---
 
