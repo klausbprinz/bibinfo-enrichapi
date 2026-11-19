@@ -115,6 +115,17 @@ style: |
 
 ---
 
+## Logs und technische Doku
+
+> Diesmal auch das.
+
+<br>
+
+* **Logs:** `podman logs enrichapi`, `podman logs enrichapi 2>&1 | grep "WARNING"`.
+* **Technische Doku:** [docs/api/index.html](../../docs/api/index.html) 
+
+---
+
 ## Wie ging es im Projekt weiter?
 
 > Eh okay.
